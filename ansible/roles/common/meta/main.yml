@@ -1,0 +1,25 @@
+---
+# roles/common/meta/main.yml
+galaxy_info:
+  author: Development Environment Setup
+  description: Common system setup and OS detection
+  company: 
+  license: MIT
+  min_ansible_version: 2.13
+  platforms:
+    - name: EL
+      versions:
+        - 8
+        - 9
+        - 10
+    - name: Ubuntu
+      versions:
+        - 20.04
+        - 22.04
+        - 24.04
+    - name: Debian
+      versions:
+        - 11
+        - 12
+
+dependencies: []

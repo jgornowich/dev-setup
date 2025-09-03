@@ -1,51 +1,75 @@
 ---
-- name: Development Environment Setup
-  hosts: all
-  become: true
-  gather_facts: true
-
-  pre_tasks:
-    - name: Update apt cache (Debian/Ubuntu)
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      when: ansible_os_family == 'Debian'
-      tags: [always]
-
-    - name: Update dnf cache (RHEL/Rocky)
-      dnf:
-        update_cache: yes
-      when: ansible_os_family == 'RedHat'
-      tags: [always]
+# playbooks/full_setup.yml
+- name: Complete Development Environment Setup
+  hosts: dev_machines
+  become: no
+  gather_facts: yes
+  
+  vars:
+    git_user_name: "{{ git_name | default('Your Name') }}"
+    git_user_email: "{{ git_email | default('your.email@example.com') }}"
 
   roles:
     - role: common
-      tags: [common, always]
+      tags: ['common', 'base']
+      when: install_common | default(true)
+    
     - role: development
-      tags: [development]
+      tags: ['development', 'dev', 'programming']
+      when: install_development_tools | default(true)
+    
     - role: terminal
-      tags: [terminal]
+      tags: ['terminal', 'cli', 'tools']
+      when: install_terminal_tools | default(true)
+    
     - role: containers
-      tags: [containers]
+      tags: ['containers', 'docker', 'kubernetes', 'k8s']
+      when: install_docker | default(true) or install_kubernetes_tools | default(true)
+    
     - role: configs
-      tags: [configs]
+      tags: ['configs', 'dotfiles', 'configuration']
+      when: install_configs | default(true)
 
   post_tasks:
+    - name: Ensure backup directory exists
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Backup dotfiles
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+        backup: yes 
+      loop: "{{ dotfiles }}"
+      when: dotfiles is defined
+      become: no
+
     - name: Display completion message
       debug:
         msg: |
-          Development environment setup complete!
+          🎉 Development environment setup complete!
           
+          Installed tools include:
+          - Programming languages: Go {{ version.go }}, Rust {{ version.rust_channel }}, Python {{ version.python }}, Node.js {{ version.node }}, Java, Ruby
+          - Development tools: Git, CMake, GDB, Gradle, Maven, Terraform
+          - Terminal tools: bat, btop, ctop, fzf, ripgrep, lazygit, lazydocker
+          - Container tools: {{ 'Docker' if install_docker else 'Podman' }}, Kubernetes tools, Helm
+          - Editors: Neovim, VS Code, Windsurf
+          
+          Configuration files deployed:
+          - ~/.bashrc with aliases and functions
+          - ~/.gitconfig and ~/.git_aliases
+          - ~/.kubectl_aliases
+          - ~/.config/starship.toml
+          - ~/.config/nvim/init.vim
+          
+          Backups saved to: {{ backup_dir }}
+
           Next steps:
-          1. Log out and log back in for all changes to take effect
-          2. Run 'nvim +PlugInstall' to install Neovim plugins
-          
-          Your Git configuration has been set to:
-          - Name: {{ git_user_name | default('Your Name') }}
-          - Email: {{ git_user_email | default('your.email@example.com') }}
-          
-          To update these values, edit the file:
-          ansible/host_vars/localhost.yml
-          
-          Happy coding!
-      tags: [configs]
+          1. Restart your terminal or run: source ~/.bashrc
+          2. Verify git User: git config --global user.name "{{ git_user_name }}"
+          3. Verify git Email: git config --global user.email "{{ git_user_email }}"
+          4. Enjoy your new development environment! 🚀

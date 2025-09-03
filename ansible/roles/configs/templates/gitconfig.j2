@@ -4,20 +4,31 @@
 
 [core]
     editor = nvim
-    pager = less -F -X
-    excludesfile = ~/.gitignore_global
+    autocrlf = input
+    safecrlf = true
+    pager = bat
 
-[push]
-    default = current
+[init]
+    defaultBranch = main
 
 [pull]
-    rebase = true
+    rebase = false
 
-[rebase]
-    autosquash = true
+[push]
+    default = simple
+    autoSetupRemote = true
+
+[merge]
+    tool = vimdiff
+
+[diff]
+    tool = vimdiff
 
 [color]
     ui = auto
+    branch = auto
+    diff = auto
+    status = auto
 
 [color "branch"]
     current = yellow reverse
@@ -31,67 +42,33 @@
     new = green bold
 
 [color "status"]
-    added = green
-    changed = yellow
-    untracked = red
+    added = yellow
+    changed = green
+    untracked = cyan
 
 [alias]
-    # Basic shortcuts
-    st = status -sb
+    st = status
     co = checkout
     br = branch
     ci = commit
+    ca = commit -a
+    cm = commit -m
+    cam = commit -am
     unstage = reset HEAD --
     last = log -1 HEAD
-    lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
-    lga = log --graph --all --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
-    
-    # More useful aliases
-    whoops = reset --hard HEAD^ --no-edit
-    fixup = commit --fixup
-    squash = commit --squash
-    root = rev-parse --show-toplevel
-    
-    # Show changes in working directory that haven't been staged
-    wip = diff --cached
-    
-    # Show changes that are staged but not yet committed
-    c = diff --cached
-    
-    # Show all conflicts
-    conflicts = !git ls-files -u | cut -f 2 | sort -u
-    
-    # Show files that are ignored by git
-    ignored = !git ls-files --others -i --exclude-standard
-
-[init]
-    defaultBranch = main
-
-[fetch]
-    prune = true
-
-[merge]
-    ff = only
-    conflictstyle = diff3
-
-[rerere]
-    enabled = true
-    autoupdate = true
-
-[help]
-    autocorrect = 1
-
-[credential]
-    helper = cache --timeout=3600
-
-[filter "lfs"]
-    clean = git-lfs clean -- %f
-    smudge = git-lfs smudge -- %f
-    process = git-lfs filter-process
-    required = true
-
-[includeIf "gitdir:~/work/"]
-    path = ~/work/.gitconfig
-
-[includeIf "gitdir:~/personal/"]
-    path = ~/personal/.gitconfig
+    visual = !gitk
+    lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+    lga = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --all
+    tree = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --all
+    amend = commit --amend
+    undo = reset --soft HEAD^
+    unstash = stash pop
+    graph = log --graph --oneline --decorate --all
+    aliases = config --get-regexp alias
+    remotes = remote -v
+    tags = tag -l
+    branches = branch -a
+    stashes = stash list
+    uncommit = reset --mixed HEAD~
+    recommit = commit --amend --no-edit
+    precommit = diff --cached --diff-algorithm=minimal -w

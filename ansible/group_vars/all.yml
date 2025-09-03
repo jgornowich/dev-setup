@@ -1,0 +1,96 @@
+---
+# Consolidated variables for all hosts
+
+# Git configuration (customize these)
+git_name: "Your Name"  # Replace with your name
+git_email: "your.email@example.com"  # Replace with your email
+
+# User configuration
+user_shell: "/bin/bash"
+user_home: "{{ ansible_env.HOME }}"
+
+# Paths
+local_bin_path: "{{ ansible_env.HOME }}/.local/bin"
+config_path: "{{ ansible_env.HOME }}/.config"
+backup_dir: "{{ ansible_env.HOME }}/backups"
+
+# Tool versions (can be overridden)
+version:
+  # Language versions
+  go: "1.25.0"
+  python: "3.10"  # Explicit for Rocky/Ubuntu
+  node: "lts"
+  rust_channel: "stable"
+  
+  # Build tools
+  gradle: "8.14.3"
+  
+  # Infrastructure tools
+  vagrant: "2.4.9"
+  terraform: "1.13.3"  # Added as it's in feature flags
+  
+  # Web frameworks
+  flutter: "3.35.2"  # Added as it's in feature flags
+  jekyll: "4.4.0"    # Added as it's in feature flags
+  hugo: "0.150.0"    # Added as it's in feature flags
+  
+  # Data science
+  anaconda: "2025.06-1"  # Anaconda version
+
+# Feature flags
+install_docker: false
+install_podman: true  # Set to false if you prefer Docker over Podman
+install_kubernetes_tools: true
+install_vscode: true
+install_windsurf: true
+install_development_tools: true
+install_terminal_tools: true
+install_anaconda: false
+install_flutter: false 
+install_terraform: true
+install_jekyll: true
+install_hugo: true
+install_vagrant: true
+install_go: true
+
+# Shared packages (cross-OS)
+common_packages:
+  - vim
+  - git
+  - curl
+  - unzip
+  - tar
+  - gzip
+  - sudo
+  - wget
+  - jq
+  - bash-completion
+
+terminal_packages: 
+  - bat
+  - ripgrep
+  - neovim
+  - htop
+  - zsh
+
+# TODO: Add yq
+
+# Dotfiles to backup
+dotfiles:
+  - src: "{{ ansible_env.HOME }}/.bashrc"
+    dest: "{{ backup_dir }}/.bashrc"
+  - src: "{{ ansible_env.HOME }}/.gitconfig"
+    dest: "{{ backup_dir }}/.gitconfig"
+  - src: "{{ ansible_env.HOME }}/.git_aliases"
+    dest: "{{ backup_dir }}/.git_aliases"
+  - src: "{{ ansible_env.HOME }}/.kubectl_aliases"
+    dest: "{{ backup_dir }}/.kubectl_aliases"
+  - src: "{{ ansible_env.HOME }}/.config/starship.toml"
+    dest: "{{ backup_dir }}/starship.toml"
+  - src: "{{ ansible_env.HOME }}/.config/nvim/init.vim"
+    dest: "{{ backup_dir }}/init.vim"
+
+# Cybersecurity settings
+firewall_ports:
+  - "22/tcp"  # SSH
+  - "80/tcp"  # HTTP (for Jekyll/Hugo)

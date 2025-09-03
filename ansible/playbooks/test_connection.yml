@@ -1,0 +1,53 @@
+---
+# playbooks/test_connection.yml
+- name: Test Ansible Connection and Gather Facts
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Test connection with retries
+      ansible.builtin.ping:
+      retries: 3
+      delay: 5
+      register: ping_result
+      until: ping_result is success
+    
+    - name: Check if user has sudo privileges
+      ansible.builtin.command: sudo -n true
+      register: sudo_check
+      failed_when: false
+      changed_when: false
+
+    - name: Ensure backup directory exists
+      ansible.builtin.file:
+        path: "{{ backup_dir | default(ansible_env.HOME + '/backups') }}"
+        state: directory
+        mode: '0755'
+
+    - name: Display system information
+      ansible.builtin.debug:
+        msg: |
+          System: {{ ansible_system }}
+          Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          OS Family: {{ ansible_os_family }}
+          Architecture: {{ ansible_architecture }}
+          Kernel: {{ ansible_facts.kernel }}
+          Hostname: {{ ansible_hostname }}
+          User: {{ ansible_user_id }}
+          Home: {{ ansible_env.HOME }}
+          Shell: {{ user_shell }}
+    
+    - name: Display sudo status
+      ansible.builtin.debug:
+        msg: "{{ 'User has sudo privileges' if sudo_check.rc == 0 else 'User does not have sudo privileges' }}"
+
+    - name: Log system info for audit
+      ansible.builtin.copy:
+        content: |
+          System: {{ ansible_system }}
+          Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          OS Family: {{ ansible_os_family }}
+          Sudo Status: {{ 'User has sudo privileges' if sudo_check.rc == 0 else 'User does not have sudo privileges' }}
+          Timestamp: {{ ansible_date_time.iso8601 }}
+        dest: "{{ backup_dir | default(ansible_env.HOME + '/backups') }}/setup.log"
+        mode: '0644'

@@ -1,7 +1,0 @@
-# Personal Configuration
-git_user_name: "Your Name"
-git_user_email: "your.email@example.com"
-
-# Optional: Customize other settings as needed
-# editor: nvim  # Uncomment and modify if you want to set a different editor
-# pager: less -F -X  # Uncomment and modify if you want to set a different pager

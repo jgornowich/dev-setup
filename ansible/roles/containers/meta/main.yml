@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: Development Environment Setup
+  description: Container tools - Docker, Podman, and Kubernetes
+  company: 
+  license: MIT
+  min_ansible_version: 2.13
+  platforms:
+    - name: EL
+      versions:
+        - 8
+        - 9
+    - name: Ubuntu
+      versions:
+        - 20.04
+        - 22.04
+    - name: Debian
+      versions:
+        - 11
+        - 12

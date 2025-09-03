@@ -1,14 +1,182 @@
 ---
-- name: Install container tools (Docker/Podman)
-  include_tasks: install_docker.yml
-  when: install_docker | bool
-  tags: [containers, docker]
+- name: Install Docker (Debian/Ubuntu)
+  block:
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      become: yes
+    
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      become: yes
+    
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+      become: yes
+    
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+      become: yes
+  when: os_family == "debian"
+
+- name: Install Docker (RHEL/Rocky/CentOS)
+  block:
+    - name: Remove conflicting podman-docker package
+      dnf:
+        name: podman-docker
+        state: absent
+      become: yes
+      ignore_errors: yes
+    
+    - name: Add Docker repository
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Stable - $basearch
+        baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+        gpgcheck: yes
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        enabled: yes
+      become: yes
+    
+    - name: Install Docker
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+      become: yes
+    
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+      become: yes
+  when: os_family == "redhat"
+
+- name: Install Podman (alternative to Docker)
+  block:
+    - name: Install Podman (Debian/Ubuntu)
+      apt:
+        name:
+          - podman
+          - podman-compose
+        state: present
+      become: yes
+      when: os_family == "debian"
+    
+    - name: Install Podman (RHEL/Rocky/CentOS)
+      dnf:
+        name:
+          - podman
+          - podman-compose
+        state: present
+      become: yes
+      when: os_family == "redhat"
 
 - name: Install Kubernetes tools
-  include_tasks: install_kubernetes.yml
-  when: install_kubernetes | bool
-  tags: [containers, kubernetes]
+  block:
+    - name: Add Kubernetes GPG key (Debian/Ubuntu)
+      apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        state: present
+      become: yes
+      when: os_family == "debian"
+    
+    - name: Add Kubernetes repository (Debian/Ubuntu)
+      apt_repository:
+        repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+        state: present
+      become: yes
+      when: os_family == "debian"
+    
+    - name: Install kubectl and kubeadm (Debian/Ubuntu)
+      apt:
+        name:
+          - kubectl
+          - kubeadm
+          - kubelet
+        state: present
+        update_cache: yes
+      become: yes
+      when: os_family == "debian"
+    
+    - name: Add Kubernetes repository (RHEL/Rocky/CentOS)
+      yum_repository:
+        name: kubernetes
+        description: Kubernetes
+        baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
+        gpgcheck: yes
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+        enabled: yes
+      become: yes
+      when: os_family == "redhat"
+    
+    - name: Install kubectl and kubeadm (RHEL/Rocky/CentOS)
+      dnf:
+        name:
+          - kubectl
+          - kubeadm
+          - kubelet
+        state: present
+      become: yes
+      when: os_family == "redhat"
 
-- name: Install container utilities
-  include_tasks: install_utilities.yml
-  tags: [containers, utilities]
+- name: Install k9s
+  block:
+    - name: Download k9s
+      get_url:
+        url: "https://github.com/derailed/k9s/releases/download/v0.31.7/k9s_Linux_amd64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/k9s.tar.gz"
+        mode: '0644'
+    
+    - name: Extract k9s
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/k9s.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin/"
+        remote_src: yes
+
+- name: Install Helm
+  block:
+    - name: Download Helm installer
+      get_url:
+        url: "https://get.helm.sh/helm-v3.13.3-linux-amd64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/helm.tar.gz"
+        mode: '0644'
+    
+    - name: Extract Helm
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/helm.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/"
+        remote_src: yes
+    
+    - name: Install Helm
+      copy:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/linux-amd64/helm"
+        dest: "{{ ansible_env.HOME }}/.local/bin/helm"
+        mode: '0755'
+        remote_src: yes
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes

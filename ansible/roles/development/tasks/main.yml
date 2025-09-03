@@ -1,531 +1,235 @@
 ---
-- name: Install development tools (Debian/Ubuntu)
+- name: Install development packages (Debian/Ubuntu)
   ansible.builtin.apt:
-    name: "{{ item }}"
+    name: "{{ development_packages }}"
     state: present
-    update_cache: true
-  loop: "{{ development_packages.debian }}"
-  when: ansible_os_family == 'Debian'
-  tags: [development, packages]
+  become: yes
+  when: ansible_os_family == "Debian"
 
-- name: Ensure EPEL and RPM Fusion repositories are enabled (RHEL/Rocky)
+- name: Install development packages (RHEL/Rocky/CentOS)
   ansible.builtin.dnf:
-    name: "{{ item }}"
+    name: "{{ development_packages }}"
     state: present
-  loop:
-    - epel-release
-    - https://download1.rpmfusion.org/free/el/rpmfusion-free-release-{{ ansible_distribution_major_version }}.noarch.rpm
-    - https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm
-  when: ansible_os_family == 'RedHat'
-  tags: [development, packages]
+  become: yes
+  when: ansible_os_family == "RedHat"
 
-- name: Install development tools (RHEL/Rocky)
-  ansible.builtin.dnf:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ development_packages.redhat }}"
-  when: ansible_os_family == 'RedHat'
-  tags: [development, packages]
-
-- name: Install Python packages
-  ansible.builtin.pip:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ python_packages }}"
-  tags: [development, python]
-
-- name: Install Rust using rustup
-  ansible.builtin.get_url:
-    url: https://sh.rustup.rs
-    dest: /tmp/rustup.sh
-    mode: '0755'
-  register: rustup_script
-  tags: [development, rust]
-  when: not lookup('file', ansible_user_dir + '/.cargo/bin/rustc', errors='ignore')
-
-- name: Run rustup installer
-  ansible.builtin.command: /tmp/rustup.sh -y
-  args:
-    creates: "{{ ansible_user_dir }}/.cargo/bin/rustc"
-  environment:
-    CARGO_HOME: "{{ ansible_user_dir }}/.cargo"
-    RUSTUP_HOME: "{{ ansible_user_dir }}/.rustup"
-  tags: [development, rust]
-
-- name: Install Node.js using nvm
+- name: Install Gradle manually (RHEL/Rocky/CentOS)
   block:
-    - name: Install nvm
+    - name: Download Gradle
       get_url:
-        url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh
-        dest: /tmp/nvm_install.sh
+        url: "https://github.com/gradle/gradle-distributions/releases/download/v{{ version.gradle }}/gradle-{{ version.gradle }}-bin.zip"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/gradle-{{ version.gradle }}-bin.zip"
+        mode: '0644'
+        validate_certs: yes
+    
+    - name: Extract Gradle
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/gradle-{{ version.gradle }}-bin.zip"
+        dest: "{{ ansible_env.HOME }}/.local/"
+        remote_src: yes
+        creates: "{{ ansible_env.HOME }}/.local/gradle-{{ version.gradle }}"
+    
+    - name: Create Gradle symlink
+      file:
+        src: "{{ ansible_env.HOME }}/.local/gradle-{{ version.gradle }}/bin/gradle"
+        dest: "{{ ansible_env.HOME }}/.local/bin/gradle"
+        state: link
+  when: os_family == "redhat"
+
+- name: Check Vagrant installation
+  block:
+    - name: Check if Vagrant binary exists
+      stat:
+        path: "{{ ansible_env.HOME }}/.local/bin/vagrant"
+      register: vagrant_binary
+      changed_when: false
+      
+    - name: Get installed Vagrant version
+      command: "{{ ansible_env.HOME }}/.local/bin/vagrant --version"
+      register: vagrant_version
+      changed_when: false
+      ignore_errors: true
+      
+    - name: Set Vagrant installation facts
+      set_fact:
+        vagrant_needs_install: >-
+          {{ not vagrant_binary.stat.exists or 
+             version.vagrant not in (vagrant_version.stdout | default('')) }}
+      
+    - name: Debug Vagrant version check
+      debug:
+        msg: >-
+          Vagrant needs install: {{ vagrant_needs_install }}
+          Installed version: {{ vagrant_version.stdout | default('Not installed') }}
+          Desired version: {{ version.vagrant }}
+      when: install_vagrant 
+      register: vagrant_check
+      changed_when: false
+
+- name: Install Vagrant
+  block:
+    - name: Download Vagrant
+      get_url:
+        url: "https://releases.hashicorp.com/vagrant/{{ version.vagrant }}/vagrant_{{ version.vagrant }}_linux_amd64.zip"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/vagrant-{{ version.vagrant }}.zip"
         mode: '0755'
+    
+    - name: Unzip Vagrant
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/vagrant-{{ version.vagrant }}.zip"
+        dest: "{{ ansible_env.HOME }}/.local/bin/"
+        remote_src: yes
+        mode: '0755'
+        extra_opts: ["-o"]
 
-    - name: Run nvm installer
-      shell: bash /tmp/nvm_install.sh
-      args:
-        creates: "$HOME/.nvm/nvm.sh"
+    - name: Verify Vagrant installation
+      command: "{{ ansible_env.HOME }}/.local/bin/vagrant --version"
+      register: vagrant_version
+      changed_when: false
+      ignore_errors: yes
 
-    - name: Install latest LTS Node.js
+    - name: Display Vagrant version
+      debug:
+        msg: "Vagrant version: {{ vagrant_version.stdout | default('Vagrant installation may have failed') }}"
+      when: install_vagrant
+
+- name: Install Rust via rustup
+  block:
+    - name: Install Rust
       shell: |
-        . $HOME/.nvm/nvm.sh
-        nvm install --lts
-        nvm alias default node
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain {{ version.rust_channel }}
+        source {{ ansible_env.HOME }}/.cargo/env
       args:
-        creates: "$HOME/.nvm/versions/node"
-  tags: [development, nodejs]
+        creates: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
+    
+    - name: Update Rust to the specified channel
+      command: rustup update {{ version.rust_channel }}
+      environment:
+        PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+
+- name: Install Go
+  block:
+    - name: Create Go directory
+      file:
+        path: "{{ ansible_env.HOME }}/.local/bin/go"
+        state: directory
+        mode: '0755'
+    
+    - name: Download Go
+      get_url:
+        url: "https://go.dev/dl/go{{ version.go }}.linux-amd64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/go-{{ version.go }}.tar.gz"
+        mode: '0644'
+    
+    - name: Extract Go
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/go-{{ version.go }}.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin/go"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+       
+    - name: Add Go to PATH in .bashrc if not present
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        line: 'export PATH="{{ ansible_env.HOME }}/.local/bin/go/bin:$PATH"'
+        insertafter: '^# User specific environment'
+        create: yes
+      when: install_go
+
+- name: Install Anaconda
+  block:
+    - name: Download Anaconda installer
+      get_url:
+        url: "https://repo.anaconda.com/archive/Anaconda3-{{ version.anaconda }}-Linux-x86_64.sh"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/anaconda-{{ version.anaconda }}.sh"
+        mode: '0755'
+    
+    - name: Install Anaconda
+      shell: "{{ ansible_env.HOME }}/Downloads/installers/anaconda-{{ version.anaconda }}.sh -b -p {{ ansible_env.HOME }}/anaconda3"
+      args:
+        creates: "{{ ansible_env.HOME }}/.local/bin/anaconda3/bin/conda"
+      when: install_anaconda
 
 - name: Install Flutter
   block:
     - name: Create Flutter directory
-      ansible.builtin.file:
-        path: /opt/flutter
+      file:
+        path: "{{ ansible_env.HOME }}/.local/bin/flutter"
         state: directory
         mode: '0755'
+    
+    - name: Download Flutter
+      get_url:
+        url: "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{ version.flutter }}-stable.tar.xz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/flutter-{{ version.flutter }}.tar.xz"
+        mode: '0644'
+      when: not flutter_installed.stat.exists
+    
+    - name: Extract Flutter
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/flutter-{{ version.flutter }}.tar.xz"
+        dest: "{{ ansible_env.HOME }}/.local/bin"
+        remote_src: yes
+        creates: "{{ ansible_env.HOME }}/.local/bin/flutter/bin/flutter"
+    
+    - name: Add Flutter to PATH
+      lineinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        line: 'export PATH="{{ ansible_env.HOME }}/.local/bin/flutter/bin:$PATH"'
+        insertafter: '^# User specific environment'
+        create: yes
+  when: install_flutter and (flutter_check is not defined or flutter_check.flutter_needs_install)
 
-    - name: Download Flutter SDK
-      ansible.builtin.get_url:
-        url: https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.16.9-stable.tar.xz
-        dest: /tmp/flutter.tar.xz
+- name: Install Terraform
+  block:
+    - name: Download Terraform
+      get_url:
+        url: "https://releases.hashicorp.com/terraform/{{ version.terraform }}/terraform_{{ version.terraform }}_linux_amd64.zip"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/terraform-{{ version.terraform }}.zip"
         mode: '0644'
 
-    - name: Extract Flutter SDK
-      ansible.builtin.unarchive:
-        src: /tmp/flutter.tar.xz
-        dest: /opt
-        remote_src: true
-        extra_opts: [--strip-components=1]
-        owner: root
-        group: root
+    - name: Extract Terraform
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/terraform-{{ version.terraform }}.zip"
+        dest: "{{ ansible_env.HOME }}/.local/bin"
+        remote_src: yes
         mode: '0755'
+        creates: "{{ ansible_env.HOME }}/.local/bin/terraform"
 
-    - name: Add Flutter to system PATH
-      ansible.builtin.lineinfile:
-        path: /etc/profile.d/flutter.sh
-        line: 'export PATH="$PATH:/opt/flutter/bin"'
-        mode: '0644'
-        create: true
-  tags: [development, flutter]
-
-- name: Install Starship prompt
-  block:
-    - name: Download Starship installer
-      ansible.builtin.get_url:
-        url: https://starship.rs/install.sh
-        dest: /tmp/starship_install.sh
-        mode: '0755'
-
-    - name: Run Starship installer
-      ansible.builtin.command: /bin/sh /tmp/starship_install.sh -y
-      args:
-        creates: /usr/local/bin/starship
-  tags: [development, terminal]
-
-- name: Install Rust using rustup
-  block:
-    - name: Download rustup installer
-      ansible.builtin.get_url:
-        url: https://sh.rustup.rs
-        dest: /tmp/rustup.sh
-        mode: '0755'
-      when: not lookup('file', ansible_user_dir + '/.cargo/bin/rustc', errors='ignore')
-
-    - name: Run rustup installer
-      ansible.builtin.command: /tmp/rustup.sh -y
-      args:
-        creates: "{{ ansible_user_dir }}/.cargo/bin/rustc"
-      environment:
-        CARGO_HOME: "{{ ansible_user_dir }}/.cargo"
-        RUSTUP_HOME: "{{ ansible_user_dir }}/.rustup"
-      when: not lookup('file', ansible_user_dir + '/.cargo/bin/rustc', errors='ignore')
-
-    - name: Update Rust toolchain
-      ansible.builtin.command: rustup update
-      environment:
-        PATH: "{{ ansible_user_dir }}/.cargo/bin:{{ ansible_env.PATH }}"
-  tags: [development, rust]
-
-- name: Install Go
-  block:
-    - name: Check if Go is already installed
-      ansible.builtin.stat:
-        path: /usr/local/go/bin/go
-      register: go_installed
-
-    - name: Download Go
-      ansible.builtin.get_url:
-        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
-        dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
-        mode: '0644'
-        checksum: "sha256:2c1bdb8ff08f9b9e4bcdb8a8ad6b335b8a40bbd81050aee2f8e4c5b6b5ae6206"
-      when: not go_installed.stat.exists
-
-    - name: Extract Go
-      ansible.builtin.unarchive:
-        src: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
-        dest: /usr/local
-        remote_src: true
-        extra_opts: ['--strip-components=1']
-        owner: root
-        group: root
-        mode: '0755'
-      when: not go_installed.stat.exists
-
-    - name: Set up Go environment
-      ansible.builtin.blockinfile:
-        path: /etc/profile.d/go.sh
-        block: |
-          # Add Go to PATH if not already present
-          if ! echo $PATH | grep -q '/usr/local/go/bin'; then
-              export PATH=$PATH:/usr/local/go/bin
-          fi
-          
-          # Set Go environment variables
-          export GOPATH=$HOME/go
-          export GOBIN=$GOPATH/bin
-          
-          # Add Go bin to PATH if not already present
-          if ! echo $PATH | grep -q "$GOPATH/bin"; then
-              export PATH=$PATH:$GOPATH/bin
-          fi
-        mode: '0644'
-        create: true
-  tags: [development, go]
-
-- name: Install Hugo
-  block:
-    - name: Check if Hugo is already installed
-      ansible.builtin.command: which hugo
-      register: hugo_installed
-      ignore_errors: true
+    - name: Verify Terraform installation
+      command: "{{ ansible_env.HOME }}/.local/bin/terraform --version"
+      register: terraform_version
       changed_when: false
+      ignore_errors: yes
 
+    - name: Display Terraform version
+      debug:
+        msg: "{{ terraform_version.stdout | default('Terraform installation may have failed') }}"
+  when: install_terraform
+
+- name: Install Jekyll and Hugo
+  block:
+    - name: Install Jekyll via gem
+      gem:
+        name: jekyll
+        state: present
+        user_install: yes
+    
+    - name: Create .local/bin directory if it doesn't exist
+      file:
+        path: "{{ ansible_env.HOME }}/.local/bin"
+        state: directory
+        mode: '0755'
+    
     - name: Download Hugo
-      ansible.builtin.get_url:
-        url: "https://github.com/gohugoio/hugo/releases/download/v0.121.2/hugo_extended_0.121.2_linux-amd64.tar.gz"
-        dest: /tmp/hugo.tar.gz
+      get_url:
+        url: "https://github.com/gohugoio/hugo/releases/download/v{{ version.hugo }}/hugo_extended_{{ version.hugo }}_linux-amd64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/hugo-{{ version.hugo }}.tar.gz"
         mode: '0644'
-        checksum: "sha256:942b78bbb556290077a58dbf4963a9a2f8f84e726c563dd6e3a00aa637912d5b"
-      when: hugo_installed.rc != 0
-
-    - name: Create Hugo directory
-      ansible.builtin.file:
-        path: /tmp/hugo_extract
-        state: directory
-        mode: '0755'
-      when: hugo_installed.rc != 0
-
+    
     - name: Extract Hugo
-      ansible.builtin.unarchive:
-        src: /tmp/hugo.tar.gz
-        dest: /tmp/hugo_extract
-        remote_src: true
-        extra_opts: ['--strip-components=1']
-      when: hugo_installed.rc != 0
-
-    - name: Install Hugo binary
-      ansible.builtin.copy:
-        src: /tmp/hugo_extract/hugo
-        dest: /usr/local/bin/hugo
-        mode: '0755'
-        remote_src: true
-      when: hugo_installed.rc != 0
-
-    - name: Clean up temporary files
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: absent
-      with_items:
-        - /tmp/hugo.tar.gz
-        - /tmp/hugo_extract
-      when: hugo_installed.rc != 0
-  tags: [development, hugo]
-
-- name: Install Ruby and Jekyll
-  block:
-    - name: Install Ruby and development tools (Debian/Ubuntu)
-      ansible.builtin.apt:
-        name: "{{ item }}"
-        state: present
-        update_cache: true
-      loop:
-        - ruby
-        - ruby-dev
-        - build-essential
-        - zlib1g-dev
-        - libssl-dev
-        - libreadline-dev
-        - libyaml-dev
-        - libxml2-dev
-        - libxslt1-dev
-        - libffi-dev
-        - libgdbm-dev
-        - libncurses5-dev
-        - libtool
-        - libcurl4-openssl-dev
-        - python3-pygments
-      when: ansible_os_family == 'Debian'
-      tags: [development, ruby]
-
-    - name: Install Ruby and development tools (RHEL/Rocky)
-      ansible.builtin.dnf:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - ruby
-        - ruby-devel
-        - "@development-tools"
-        - zlib-devel
-        - openssl-devel
-        - readline-devel
-        - libyaml-devel
-        - libxml2-devel
-        - libxslt-devel
-        - libffi-devel
-        - gdbm-devel
-        - ncurses-devel
-        - libtool
-        - libcurl-devel
-        - python3-pygments
-      when: ansible_os_family == 'RedHat'
-      tags: [development, ruby]
-
-    - name: Install Jekyll and Bundler
-      community.gem.gem:
-        name: "{{ item }}"
-        state: present
-        user_install: false
-        executable: /usr/bin/gem
-      loop:
-        - jekyll
-        - bundler
-      tags: [development, ruby, jekyll]
-
-- name: Install Vagrant
-  block:
-    - name: Add HashiCorp repository (Debian/Ubuntu)
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
-        state: present
-        filename: hashicorp
-        update_cache: true
-      when: ansible_os_family == 'Debian'
-
-    - name: Install HashiCorp GPG key (Debian/Ubuntu)
-      ansible.builtin.get_url:
-        url: https://apt.releases.hashicorp.com/gpg
-        dest: /usr/share/keyrings/hashicorp-archive-keyring.gpg
-        mode: '0644'
-      when: ansible_os_family == 'Debian'
-
-    - name: Install Vagrant (Debian/Ubuntu)
-      ansible.builtin.apt:
-        name: vagrant
-        state: present
-        update_cache: true
-      when: ansible_os_family == 'Debian'
-      tags: [development, vagrant]
-
-    - name: Add HashiCorp repository (RHEL/Rocky)
-      ansible.builtin.yum_repository:
-        name: hashicorp
-        description: HashiCorp Stable
-        baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
-        gpgcheck: true
-        gpgkey: https://rpm.releases.hashicorp.com/gpg
-        state: present
-      when: ansible_os_family == 'RedHat'
-
-    - name: Install Vagrant (RHEL/Rocky)
-      ansible.builtin.dnf:
-        name: vagrant
-        state: present
-      when: ansible_os_family == 'RedHat'
-      tags: [development, vagrant]
-
-- name: Install Terminator
-  block:
-    - name: Install Terminator (Debian/Ubuntu)
-      ansible.builtin.apt:
-        name: terminator
-        state: present
-        update_cache: true
-      when: ansible_os_family == 'Debian'
-      tags: [development, terminator]
-
-    - name: Install Terminator (RHEL/Rocky)
-      ansible.builtin.dnf:
-        name: terminator
-        state: present
-      when: ansible_os_family == 'RedHat'
-      tags: [development, terminator]
-
-- name: Configure shell environment
-  block:
-    - name: Create .zshrc if it doesn't exist
-      ansible.builtin.copy:
-        dest: "{{ ansible_user_dir }}/.zshrc"
-        content: |
-          # Enable Powerlevel10k instant prompt
-          if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-            source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-          fi
-
-          # Path to your oh-my-zsh installation
-          export ZSH="$HOME/.oh-my-zsh"
-
-          # Theme
-          ZSH_THEME="powerlevel10k/powerlevel10k"
-
-          # Plugins
-          plugins=(
-            git
-            zsh-autosuggestions
-            zsh-syntax-highlighting
-            docker
-            docker-compose
-            kubectl
-            terraform
-            python
-            rust
-            golang
-            npm
-            yarn
-            sudo
-          )
-
-          # Source oh-my-zsh
-          source $ZSH/oh-my-zsh.sh
-
-          # Aliases
-          alias ll='ls -la'
-          alias gs='git status'
-          alias gp='git pull'
-          alias gpu='git push'
-          alias gcm='git commit -m'
-          alias gco='git checkout'
-          alias gb='git branch'
-          alias gd='git diff'
-          alias gdc='git diff --cached'
-          alias gl='git log --oneline --graph --decorate --all'
-          alias dk='docker'
-          alias dkc='docker-compose'
-          alias k='kubectl'
-          alias tf='terraform'
-          alias py='python3'
-          alias pip='pip3'
-          alias python='python3'
-
-          # Initialize Starship prompt
-          eval "$(starship init zsh)"
-
-          # Source .p10k.zsh if it exists
-          [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-          # Add local bin to PATH if it exists
-          if [ -d "$HOME/.local/bin" ]; then
-            export PATH="$HOME/.local/bin:$PATH"
-          fi
-
-          # Add Go bin to PATH if it exists
-          if [ -d "$HOME/go/bin" ]; then
-            export PATH="$HOME/go/bin:$PATH"
-          fi
-
-          # Add Cargo bin to PATH if it exists
-          if [ -d "$HOME/.cargo/bin" ]; then
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
-        owner: "{{ ansible_user_id }}"
-        group: "{{ ansible_user_gid | default(omit) }}"
-        mode: '0644'
-      tags: [development, shell]
-
-    - name: Create Oh My Zsh custom directories
-      ansible.builtin.file:
-        path: "{{ ansible_user_dir }}/.oh-my-zsh/custom/{{ item }}"
-        state: directory
-        mode: '0755'
-      with_items:
-        - themes
-        - plugins
-      tags: [development, shell]
-
-    - name: Install Powerlevel10k theme
-      ansible.builtin.git:
-        repo: https://github.com/romkatv/powerlevel10k.git
-        dest: "{{ ansible_user_dir }}/.oh-my-zsh/custom/themes/powerlevel10k"
-        update: true
-        depth: 1
-      tags: [development, shell]
-
-    - name: Install zsh-autosuggestions
-      ansible.builtin.git:
-        repo: https://github.com/zsh-users/zsh-autosuggestions
-        dest: "{{ ansible_user_dir }}/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
-        update: true
-        depth: 1
-      tags: [development, shell]
-
-    - name: Install zsh-syntax-highlighting
-      ansible.builtin.git:
-        repo: https://github.com/zsh-users/zsh-syntax-highlighting.git
-        dest: "{{ ansible_user_dir }}/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
-        update: true
-        depth: 1
-      tags: [development, shell]
-
-    - name: Download Oh My Zsh installer
-      ansible.builtin.get_url:
-        url: https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-        dest: /tmp/install-ohmyzsh.sh
-        mode: '0755'
-      tags: [development, shell]
-
-    - name: Install Oh My Zsh
-      ansible.builtin.command: /tmp/install-ohmyzsh.sh --unattended
-      args:
-        creates: "{{ ansible_user_dir }}/.oh-my-zsh"
-      environment:
-        ZSH: "{{ ansible_user_dir }}/.oh-my-zsh"
-      tags: [development, shell]
-
-    - name: Set Zsh as default shell
-      ansible.builtin.user:
-        name: "{{ ansible_user_id }}"
-        shell: /usr/bin/zsh
-      when: ansible_user_shell != '/usr/bin/zsh'
-      tags: [development, shell]
-
-- name: Clean up temporary files
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /tmp/terraform.zip
-    - /tmp/k9s.tar.gz
-    - /tmp/hugo.tar.gz
-    - "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
-    - /tmp/rustup.sh
-    - /tmp/nvm_install.sh
-    - /tmp/install-ohmyzsh.sh
-    - /tmp/starship_install.sh
-  tags: [development, cleanup]
-  when: not lookup('file', ansible_user_dir + '/.nvm/nvm.sh', errors='ignore')
-
-- name: Run nvm installer
-  ansible.builtin.command: /bin/bash /tmp/nvm_install.sh
-  args:
-    creates: "{{ ansible_user_dir }}/.nvm"
-  when: nvm_installer is defined and (nvm_installer is changed or nvm_installer is not skipped)
-
-    - name: Install Node.js
-      ansible.builtin.shell: |
-        export NVM_DIR="{{ ansible_user_dir }}/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        nvm install {{ node_version }}
-        nvm alias default {{ node_version }}
-      args:
-        creates: "{{ ansible_user_dir }}/.nvm/versions/node/v{{ node_version }}"
-      environment:
-        NVM_DIR: "{{ ansible_user_dir }}/.nvm"
-  tags: [development, nodejs]
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/hugo-{{ version.hugo }}.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin"
+        remote_src: yes
+        creates: "{{ ansible_env.HOME }}/.local/bin/hugo"

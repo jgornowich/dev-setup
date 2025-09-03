@@ -1,48 +1,98 @@
 ---
-- name: Include distribution-specific variables
-  include_vars: "{{ item }}"
-  with_first_found:
-    - "{{ ansible_distribution }}.yml"
-    - "{{ ansible_os_family }}.yml"
-    - "vars/{{ ansible_distribution }}.yml"
-    - "vars/{{ ansible_os_family }}.yml"
-  tags: [always]
+# roles/common/tasks/main.yml
+- name: Detect OS family and distribution
+  ansible.builtin.set_fact:
+    os_family: "{{ ansible_os_family | lower }}"
+    os_distribution: "{{ ansible_distribution | lower }}"
+    os_version: "{{ ansible_distribution_version }}"
 
-- name: Install common packages (Debian/Ubuntu)
-  apt:
-    name: "{{ item }}"
-    state: present
+- name: Display detected OS information
+  ansible.builtin.debug:
+    msg: "Detected OS: {{ os_distribution }} {{ os_version }} ({{ os_family }})"
+
+- name: Update package cache (Debian/Ubuntu)
+  ansible.builtin.apt:
     update_cache: yes
-  loop: "{{ common_packages.debian }}"
-  when: ansible_os_family == 'Debian'
-  tags: [common, packages]
+    cache_valid_time: 3600
+  become: yes
+  when: ansible_os_family == "Debian"
 
-- name: Install common packages (RHEL/Rocky)
-  dnf:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ common_packages.redhat }}"
-  when: ansible_os_family == 'RedHat'
-  tags: [common, packages]
+- name: Update package cache (RHEL/Rocky/CentOS)
+  ansible.builtin.dnf:
+    update_cache: yes
+  become: yes
+  when: ansible_os_family == "RedHat"
 
 - name: Create user directories
   file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
     mode: '0755'
   loop:
-    - "{{ ansible_user_dir }}/.local/bin"
-    - "{{ ansible_user_dir }}/.config"
-    - "{{ ansible_user_dir }}/.ssh"
-  tags: [common, directories]
+    - "{{ ansible_env.HOME }}/.local/bin"
+    - "{{ ansible_env.HOME }}/.config"
+    - "{{ ansible_env.HOME }}/bin"
+    - "{{ ansible_env.HOME }}/Downloads/installers"
 
-- name: Ensure authorized_keys exists
-  file:
-    path: "{{ ansible_user_dir }}/.ssh/authorized_keys"
-    state: touch
-    owner: "{{ ansible_user_id }}"
-    group: "{{ ansible_user_gid }}"
-    mode: '0600'
-  tags: [common, ssh]
+- name: Add ~/.local/bin to PATH in .profile if not present
+  lineinfile:
+    path: "{{ ansible_env.HOME }}/.profile"
+    line: 'export PATH="$HOME/.local/bin:$PATH"'
+    create: yes
+    state: present
+
+- name: Install common packages
+  ansible.builtin.package:
+    name: "{{ common_packages }}"
+    state: present
+  become: yes
+  when: ansible_os_family in ['RedHat', 'Debian']
+
+- name: Install EPEL repository (RHEL/Rocky/CentOS)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  become: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Install extra packages (RHEL/Rocky/CentOS)
+  ansible.builtin.dnf:
+    name: "{{ extra_packages }}"
+    state: present
+  become: yes
+  when: ansible_os_family == "RedHat"
+
+- name: Install extra packages (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: "{{ extra_packages }}"
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"
+
+- name: Configure git user
+  ansible.builtin.git_config:
+    name: "{{ item.name }}"
+    scope: global
+    value: "{{ item.value }}"
+  loop:
+    - { name: 'user.name', value: "{{ git_user_name }}" }
+    - { name: 'user.email', value: "{{ git_user_email }}" }
+
+- name: Create user directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ local_bin_path }}"
+    - "{{ config_path }}"
+    - "{{ ansible_env.HOME }}/bin"
+    - "{{ ansible_env.HOME }}/Downloads/installers"
+
+- name: Add ~/.local/bin to PATH in .bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    line: 'export PATH="$HOME/.local/bin:$PATH"'
+    create: yes
+    state: present
+    mode: '0644'

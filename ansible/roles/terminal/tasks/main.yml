@@ -1,73 +1,222 @@
 ---
-- name: Install terminal tools (Debian/Ubuntu)
-  apt:
-    name: "{{ item }}"
+- name: Install terminal tools via package manager (RHEL/Rocky/CentOS)
+  ansible.builtin.dnf:
+    name: "{{ terminal_packages }}"
     state: present
-  loop: "{{ terminal_packages.debian }}"
-  when: ansible_os_family == 'Debian'
-  tags: [terminal, packages]
+  become: yes
+  when: ansible_os_family == "RedHat"
 
-- name: Install terminal tools (RHEL/Rocky)
-  dnf:
-    name: "{{ item }}"
+- name: Install terminal tools via package manager (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: "{{ terminal_packages }}"
     state: present
-  loop: "{{ terminal_packages.redhat }}"
-  when: ansible_os_family == 'RedHat'
-  tags: [terminal, packages]
+  become: yes
+  when: ansible_os_family == "Debian"
 
-- name: Install Starship
-  shell: |
-    sh -c "$(curl -fsSL https://starship.rs/install.sh)" -- -y
-  args:
-    creates: "/usr/local/bin/starship"
-  tags: [terminal, starship]
 
-- name: Install Lazygit
-  get_url:
-    url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ lazygit_version }}/lazygit_{{ lazygit_version }}_Linux_x86_64.tar.gz"
-    dest: "/tmp/lazygit.tar.gz"
-    mode: '0755'
-  register: lazygit_download
-  tags: [terminal, lazygit]
-
-- name: Extract and install Lazygit
-  unarchive:
-    src: "/tmp/lazygit.tar.gz"
-    dest: "/usr/local/bin"
-    remote_src: yes
-    extra_opts: [--strip-components=1]
-  when: lazygit_download.changed
-  tags: [terminal, lazygit]
-
-- name: Install fzf
-  git:
-    repo: https://github.com/junegunn/fzf.git
-    dest: "{{ ansible_user_dir }}/.fzf"
-    update: yes
-  tags: [terminal, fzf]
-
-- name: Install fzf key bindings and completion
-  shell: "{{ ansible_user_dir }}/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-zsh"
-  args:
-    creates: "{{ ansible_user_dir }}/.fzf.bash"
-  tags: [terminal, fzf]
-
-- name: Install ripgrep (if not available from package manager)
+- name: Install modern terminal tools from GitHub releases
   block:
-    - name: Download ripgrep
+    - name: Download and install btop
+      block:
+        - name: Download btop
+          get_url:
+            url: "https://github.com/aristocratos/btop/releases/download/v1.2.13/btop-x86_64-linux-musl.tbz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/btop.tbz"
+            mode: '0644'
+        
+        - name: Extract btop
+          unarchive:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/btop.tbz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/"
+            remote_src: yes
+        
+        - name: Install btop
+          copy:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/btop/bin/btop"
+            dest: "{{ ansible_env.HOME }}/.local/bin/btop"
+            mode: '0755'
+            remote_src: yes
+
+    - name: Download and install ctop
       get_url:
-        url: "https://github.com/BurntSushi/ripgrep/releases/download/{{ ripgrep_version }}/ripgrep-{{ ripgrep_version }}-x86_64-unknown-linux-musl.tar.gz"
-        dest: "/tmp/ripgrep.tar.gz"
-    - name: Extract ripgrep
+        url: "https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64"
+        dest: "{{ ansible_env.HOME }}/.local/bin/ctop"
+        mode: '0755'
+
+    - name: Install cmatrix (Debian/Ubuntu)
+      apt:
+        name: cmatrix
+        state: present
+      become: yes
+      when: os_family == "debian"
+
+    - name: Download dive (Debian/Ubuntu)
+      get_url:
+        url: "https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.deb"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
+        mode: '0644'
+      when: os_family == "debian"
+
+    - name: Install dive (Debian/Ubuntu)
+      apt:
+        deb: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
+        state: present
+      become: yes
+      when: os_family == "debian"
+
+    - name: Download dive (RHEL/Rocky/CentOS)
+      get_url:
+        url: "https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.rpm"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
+        mode: '0644'
+      when: os_family == "redhat"
+
+    - name: Install dive (RHEL/Rocky/CentOS)
+      dnf:
+        name: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
+        state: present
+        disable_gpg_check: yes
+      become: yes
+      when: os_family == "redhat"
+
+    - name: Download and install fastfetch
+      block:
+        - name: Download fastfetch
+          get_url:
+            url: "https://github.com/fastfetch-cli/fastfetch/releases/download/2.8.10/fastfetch-linux-amd64.tar.gz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/fastfetch.tar.gz"
+            mode: '0644'
+        
+        - name: Extract fastfetch
+          unarchive:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/fastfetch.tar.gz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/"
+            remote_src: yes
+        
+        - name: Install fastfetch
+          copy:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/fastfetch-linux-amd64/usr/bin/fastfetch"
+            dest: "{{ ansible_env.HOME }}/.local/bin/fastfetch"
+            mode: '0755'
+            remote_src: yes
+
+    - name: Download and install fzf
+      block:
+        - name: Download fzf
+          get_url:
+            url: "https://github.com/junegunn/fzf/releases/download/v0.65.2/fzf-0.65.2-linux_amd64.tar.gz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/fzf.tar.gz"
+            mode: '0644'
+        
+        - name: Extract fzf
+          unarchive:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/fzf.tar.gz"
+            dest: "{{ ansible_env.HOME }}/.local/bin/"
+            remote_src: yes
+
+    - name: Download and install lazydocker
+      get_url:
+        url: "https://github.com/jesseduffield/lazydocker/releases/download/v0.24.1/lazydocker_0.24.1_Linux_x86_64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/lazydocker.tar.gz"
+        mode: '0644'
+
+    - name: Extract lazydocker
       unarchive:
-        src: "/tmp/ripgrep.tar.gz"
-        dest: "/tmp/ripgrep"
+        src: "{{ ansible_env.HOME }}/Downloads/installers/lazydocker.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin/"
         remote_src: yes
-    - name: Install ripgrep binary
+
+    - name: Download and install lazygit
+      get_url:
+        url: "https://github.com/jesseduffield/lazygit/releases/download/v0.54.2/lazygit_0.54.2_linux_x86_64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/lazygit.tar.gz"
+        mode: '0644'
+
+    - name: Extract lazygit
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/lazygit.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin/"
+        remote_src: yes
+
+    - name: Download and install Waveterm
+      block:
+        - name: Download Waveterm (Debian/Ubuntu)
+          get_url:
+            url: "https://github.com/wavetermdev/waveterm/releases/download/v0.11.5/waveterm-linux-x86_64-0.11.5.rpm"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.deb"
+            mode: '0644'
+          when: os_family == "debian"
+        
+        - name: Install Waveterm (Debian/Ubuntu)
+          apt:
+            deb: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.deb"
+            state: present
+          become: yes
+          when: os_family == "debian"
+        
+        - name: Download Waveterm (RHEL/Rocky/CentOS)
+          get_url:
+            url: "https://github.com/wavetermdev/waveterm/releases/download/v0.11.5/waveterm-linux-x86_64-0.11.5.rpm"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.rpm"
+            mode: '0644'
+          when: os_family == "redhat"
+        
+        - name: Install Waveterm (RHEL/Rocky/CentOS)
+          dnf:
+            name: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.rpm"
+            state: present
+            disable_gpg_check: yes
+          become: yes
+          when: os_family == "redhat"
+
+    - name: Download and install superfile (spf)
+      get_url:
+        url: "https://github.com/yorukot/superfile/releases/download/v1.3.3/superfile-linux-v1.3.3-amd64.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/superfile.tar.gz"
+        mode: '0644'
+
+    - name: Extract superfile
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/superfile.tar.gz"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/"
+        remote_src: yes
+
+    - name: Install superfile
       copy:
-        src: "/tmp/ripgrep/ripgrep-{{ ripgrep_version }}-x86_64-unknown-linux-musl/rg"
-        dest: "/usr/local/bin/rg"
+        src: "{{ ansible_env.HOME }}/Downloads/installers/dist/superfile-linux-v1.3.3-amd64/spf"
+        dest: "{{ ansible_env.HOME }}/.local/bin/spf"
         mode: '0755'
         remote_src: yes
-  when: not ripgrep_installed.stat.exists
-  tags: [terminal, ripgrep]
+
+    - name: Install Starship
+      shell: |
+        curl -sS https://starship.rs/install.sh | sh -s -- -y
+      args:
+        creates: "{{ ansible_env.HOME }}/.local/bin/starship"
+      become: yes
+
+    - name: Install Cascadia Code Nerd Font
+      block:
+        - name: Create fonts directory
+          file:
+            path: "{{ ansible_env.HOME }}/.local/share/fonts"
+            state: directory
+            mode: '0755'
+
+        - name: Download Cascadia Code Nerd Font
+          get_url:
+            url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/CascadiaCode.zip
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/CascadiaCode.zip"
+            mode: '0644'
+
+        - name: Extract Cascadia Code Nerd Font
+          unarchive:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/CascadiaCode.zip"
+            dest: "{{ ansible_env.HOME }}/.local/share/fonts"
+            remote_src: yes
+            extra_opts: ["-j"]
+
+        - name: Update font cache
+          command: fc-cache -f -v
+          args:
+            creates: "{{ ansible_env.HOME }}/.local/share/fonts/Caskaydia Cove Nerd Font Complete Windows Compatible.ttf"

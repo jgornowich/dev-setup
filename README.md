@@ -21,23 +21,28 @@ This project provides a complete, automated setup for a development environment 
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/dev-setup.git
+   git clone https://github.com/jgornowich/dev-setup.git
    cd dev-setup
    ```
+   
+2. Modify the entries in `ansible/group_vars/all.yml` for `git_name` and `git_email`
 
-2. Run the bootstrap script:
+3. Run the bootstrap script:
    ```bash
-   ./bootstrap.sh
+   make bootstrap
    ```
 
-3. Follow the instructions to activate the virtual environment and run the playbooks.
+4. Run the full setup playbook:
+   ```bash
+   make setup
+   ```
 
 ## Project Structure
 
 ```
 .
-├── ansible/                  # Ansible configuration
-│   ├── inventory/           # Inventory files
+├── ansible/                 # Ansible configuration
+│   ├── group_vars/          # Group variables (versions, packages, etc)
 │   ├── playbooks/           # Playbooks for different scenarios
 │   └── roles/               # Ansible roles
 │       ├── common/          # Common configurations
@@ -46,6 +51,7 @@ This project provides a complete, automated setup for a development environment 
 │       ├── development/     # Development tools
 │       └── terminal/        # Terminal tools
 ├── bootstrap.sh             # Bootstrap script
+├── Makefile                 # Helper makefile 
 └── README.md                # This file
 ```
 
@@ -53,72 +59,84 @@ This project provides a complete, automated setup for a development environment 
 
 - `full_setup.yml`: Complete development environment setup including all tools, configurations, and system packages
 
-## Usage
-
-1. **Basic usage**:
-   ```bash
-   # Run the full setup (recommended)
-   ansible-playbook -i inventory/ playbooks/full_setup.yml
-   ```
-
-2. **Target specific hosts**:
-   ```bash
-   # Run only on localhost (default behavior)
-   ansible-playbook -i inventory/ playbooks/full_setup.yml -l localhost
-   ```
-
-3. **Run with tags**:
-   ```bash
-   # Run only specific components using tags
-   ansible-playbook -i inventory/ playbooks/full_setup.yml --tags "development,terminal"
-   ```
-
 ## Customization
 
 ### Variables
 
-You can customize the setup by creating a `group_vars/all.yml` or `host_vars/localhost.yml` file with your preferred settings.
+You can customize the setup by editing the `group_vars/all.yml` file with your preferred settings.
 
-### Adding Tools
+### Adding New Tools
 
 To add new tools:
 
-1. Add the package to the appropriate role's `vars/main.yml` file
-2. Add installation tasks to the role's `tasks/main.yml` file
-3. Add any necessary configurations to the `templates/` directory
+1. Edit the appropriate role in `ansible/roles/*/tasks/main.yml`
+2. Add package names or download/install tasks
+3. Include all versions as variables in `group_vars/all.yml`
+
+### Adding New Configuration Files
+
+1. Create template in `ansible/roles/configs/templates/`
+2. Add deployment task in `ansible/roles/configs/tasks/main.yml`
 
 ## Included Tools
 
-### Development Tools
-- Git
-- Python 3 with pip and virtualenv
-- Go
-- Node.js (via NVM)
-- Rust (via rustup)
-- Java (OpenJDK)
-- Build tools (make, cmake, etc.)
+### Programming Languages & Compilers
+- **Git** - Version control
+- **C/C++** - GCC, G++, CMake, GDB
+- **Boost** - C++ libraries
+- **Java** - OpenJDK + JavaFX
+- **Gradle & Maven** - Java build tools
+- **Python 3** - With pip and venv
+- **Anaconda** - Python data science distribution
+- **Rust** - Via rustup with Cargo
+- **Go** - Latest stable version
+- **Node.js & NPM** - JavaScript runtime
+- **Ruby & RubyGems** - Ruby language and package manager
+- **Flutter** - Mobile app development framework
+- **Terraform** - Infrastructure as code
+- **Hugo & Jekyll** - Static site generators
+- **Vagrant** - Virtual machine management
 
-### Terminal Tools
-- zsh with Oh My Zsh
-- tmux
-- fzf
-- ripgrep
-- fd
-- bat
-- exa
-- htop/btop
-- lazygit
-- lazydocker
+### Terminal & CLI Tools
+- **bat** - Better cat with syntax highlighting
+- **btop** - Modern system monitor
+- **ctop** - Container monitoring
+- **cmatrix** - Matrix-style terminal effect
+- **dive** - Docker image inspection
+- **fastfetch** - System information display
+- **fd** - Better find command
+- **fzf** - Fuzzy finder
+- **gping** - Ping with graph
+- **lazydocker** - Docker TUI
+- **lazygit** - Git TUI
+- **ripgrep** - Better grep
+- **nvim** - Modern Vim editor
+- **WavTerm** - Modern terminal emulator
+- **spf (superfile)** - Modern file manager
+- **starship** - Cross-shell prompt
+- **terminator** - Terminal emulator
 
-### Container Tools
-- Docker/Podman
-- Docker Compose
-- Kubernetes tools (kubectl, k9s, etc.)
-- Helm
+### Container & Kubernetes Tools
+- **Docker** - Container runtime
+- **Podman** - Alternative container runtime
+- **Docker Compose** - Multi-container applications
+- **kubectl** - Kubernetes CLI
+- **kubeadm** - Kubernetes cluster setup
+- **k9s** - Kubernetes TUI
+- **Helm** - Kubernetes package manager
 
-### Editors
-- Neovim with plugins
-- VS Code (optional)
+### Editors & IDEs
+- **Neovim** - With custom configuration
+- **VS Code** - Microsoft's editor
+- **Windsurf** - AI-powered editor (if available)
+
+### Configuration Files
+- **~/.bashrc** - Enhanced with aliases and functions
+- **~/.gitconfig** - Git configuration with aliases
+- **~/.git_aliases** - Extended Git aliases
+- **~/.kubectl_aliases** - Kubernetes shortcuts
+- **~/.config/starship.toml** - Starship prompt configuration
+- **~/.config/nvim/init.vim** - Neovim configuration
 
 ## Troubleshooting
 
@@ -137,17 +155,37 @@ To add new tools:
    - Run with `-v` for more verbose output
    - Make sure all required variables are set
 
+4. **Tool not found after installation:**
+   - Restart your terminal or run `source ~/.bashrc`
+   - Check if `~/.local/bin` is in your PATH
+
+5. **Docker permission denied:**
+   - Log out and back in after installation (to apply group membership)
+   - Or run: `newgrp docker`
+
+### Getting More Information
+
+- Check the log file `ansible.log`
+- Rerun `ansible-playbook` with `-v` flag for verbose output
+- Test specific roles: Use `--tags` to run only specific components
+- Clean up: Run `make clean` to remove downloaded installers
+
+## Todo
+
+Add cloud cli packages (aws, gcp, azure) and vibe coding cli packages (Claude Code, Gemini CLI, Aider, etc).  And setup any configuration to authentication or api key managment. 
+
+Setup a vault to store any sensitive information.
+
+Find a way to automate VSCode extension installation and settings configuration.
+
+Play with setting up virtual desktops like Azure Virtual Desktop, Paperspace, Kasm Workspaces, etc.  
+https://3dfuzion.com/top-10-best-free-virtual-desktop-cloud-pc-providers-in-2025/
+
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions or suggestions are welcome!
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- [Ansible](https://www.ansible.com/)
-- [Oh My Zsh](https://ohmyz.sh/)
-- [Neovim](https://neovim.io/)
-- And all the amazing open-source tools included in this setup!

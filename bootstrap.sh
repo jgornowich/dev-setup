@@ -53,28 +53,13 @@ pip install -r ansible/requirements.txt
 echo -e "${GREEN}Installing Ansible collections...${NC}"
 ansible-galaxy collection install community.general
 
-# Make inventory directory if it doesn't exist
-mkdir -p ansible/inventory
-
-# Create a default inventory file if it doesn't exist
-if [ ! -f "ansible/inventory/localhost" ]; then
-    cat > ansible/inventory/localhost <<EOL
-[local]
-localhost ansible_connection=local
-
-[all:vars]
-ansible_python_interpreter=auto_silent
-EOL
-    echo -e "${GREEN}Created default inventory file at ansible/inventory/localhost${NC}"
-fi
-
 echo -e "\n${GREEN}Setup complete!${NC}"
 echo -e "\nTo get started, run the following commands:"
 echo -e "1. ${YELLOW}source venv/bin/activate${NC} - Activate the Python virtual environment"
 echo -e "2. ${YELLOW}cd ansible${NC} - Change to the Ansible directory"
 echo -e "3. Run the setup playbook:"
-echo -e "   - ${YELLOW}ansible-playbook -i inventory/ playbooks/full_setup.yml${NC} - Complete development environment setup"
+echo -e "   - ${YELLOW}ansible-playbook playbooks/full_setup.yml${NC} - Complete development environment setup"
 echo -e "\nTo run against a specific host or group, use the -l flag:"
-echo -e "   - ${YELLOW}ansible-playbook -i inventory/ playbooks/full_setup.yml -l localhost${NC}"
+echo -e "   - ${YELLOW}ansible-playbook playbooks/full_setup.yml -l localhost${NC}"
 
 echo -e "\n${GREEN}Happy coding! 🚀${NC}"

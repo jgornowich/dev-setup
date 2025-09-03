@@ -1,0 +1,29 @@
+---
+package_manager: dnf
+firewall_service: firewalld
+extra_packages:
+  - gcc
+  - gcc-c++
+  - make
+  - cmake
+  - dnf-plugins-core
+
+development_packages:
+  - git
+  - gcc
+  - gcc-c++
+  - cmake
+  - gdb
+  - boost-devel
+  - java-21-openjdk
+  - java-21-openjdk-devel
+  - maven
+  - python3
+  - python3-pip
+  - nodejs
+  - npm
+  - ruby
+  - ruby-devel
+  - rubygems
+  - libxcrypt-devel
+  - libxcrypt-compat

@@ -6,54 +6,14 @@ case $- in
       *) return;;
 esac
 
-# Source global definitions
-if [ -f /etc/bashrc ]; then
-    . /etc/bashrc
-fi
+# History settings
+HISTCONTROL=ignoreboth
+HISTSIZE=1000
+HISTFILESIZE=2000
+shopt -s histappend
 
-# User specific environment
-if ! [[ "$PATH" =~ "{{ ansible_user_dir }}/.local/bin:{{ ansible_user_dir }}/bin:" ]]
-then
-    PATH="{{ ansible_user_dir }}/.local/bin:{{ ansible_user_dir }}/bin:$PATH"
-export PATH
-fi
-
-# Load aliases
-if [ -f ~/.bash_aliases ]; then
-    . ~/.bash_aliases
-fi
-
-# Load git aliases
-if [ -f ~/.git_aliases ]; then
-    . ~/.git_aliases
-fi
-
-# Load kubectl aliases
-if [ -f ~/.kubectl_aliases ]; then
-    . ~/.kubectl_aliases
-fi
-
-# Set default editor
-export EDITOR=nvim
-
-# Set up Go
-if [ -d "/usr/local/go/bin" ] ; then
-    export PATH="$PATH:/usr/local/go/bin"
-    export GOPATH="{{ ansible_user_dir }}/go"
-    export PATH="$PATH:$GOPATH/bin"
-fi
-
-# Set up Rust
-if [ -f "{{ ansible_user_dir }}/.cargo/env" ]; then
-    . "{{ ansible_user_dir }}/.cargo/env"
-fi
-
-# Set up NVM
-if [ -s "{{ ansible_user_dir }}/.nvm/nvm.sh" ]; then
-    export NVM_DIR="{{ ansible_user_dir }}/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-fi
+# Check window size after each command
+shopt -s checkwinsize
 
 # Enable color support
 if [ -x /usr/bin/dircolors ]; then
@@ -64,38 +24,212 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
-# Some more ls aliases
-alias ll='ls -alFh'
+# Colored GCC warnings and errors
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+# Get the colors in the opened man page itself
+export MANPAGER="sh -c 'col -bx | bat -l man -p --paging always'"
+
+# Exports for FZF
+#export FZF_DEFAULT_COMMAND='rg --files --hidden --no-ignore --iglob '!*/.git/*' --iglob '!.git''
+#export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git"'
+
+# NVIM setup
+export EDITOR=nvim
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# Basic aliases
+alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 
-# Add an "alert" alias for long running commands
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+# Git aliases
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias gb='git branch'
+alias gco='git checkout'
+alias lg='lazygit'
 
-# Enable programmable completion features
-if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
-  fi
+# Docker/Podman aliases
+alias d='docker'
+alias dc='docker-compose'
+alias dps='docker ps'
+alias di='docker images'
+alias ld='lazydocker'
+
+# Development aliases
+alias py='python3'
+alias pip='pip3'
+alias v='nvim'
+alias vim='nvim'
+alias c='clear'
+alias tf='terraform'
+
+# System aliases
+alias ports='netstat -tuln'
+alias mount='mount | column -t'
+alias h='history'
+alias j='jobs -l'
+alias path='echo -e ${PATH//:/\\n}'
+alias now='date +"%T"'
+alias nowtime=now
+alias nowdate='date +"%d-%m-%Y"'
+
+# User aliases
+alias ssh='ssh -o StrictHostKeyChecking=accept-new'
+
+alias find-not-mine='find . ! -uid "$(id -u)"'
+alias remove-not-mine='sudo find . ! -uid "$(id -u)" -exec rm -r {} \;'
+alias chown-not-mine='sudo find . ! -uid "$(id -u)" -exec chown "$(id -u):$(id -g)" {} \;'
+
+alias rga='rg --no-ignore'
+alias rgi='rg --glob "!*.log" --glob "!*.xml" --glob "!*.html"'
+alias fda='fd --no-ignore'
+
+# Memory free aliases
+alias clearcache='sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"'
+alias clearcachev='echo "Freeing memory cache..."; sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"; echo "Done."; free -h'
+
+# Functions
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+extract() {
+    if [ -f $1 ] ; then
+        case $1 in
+            *.tar.bz2)   tar xjf $1     ;;
+            *.tar.gz)    tar xzf $1     ;;
+            *.bz2)       bunzip2 $1     ;;
+            *.rar)       unrar e $1     ;;
+            *.gz)        gunzip $1      ;;
+            *.tar)       tar xf $1      ;;
+            *.tbz2)      tar xjf $1     ;;
+            *.tgz)       tar xzf $1     ;;
+            *.zip)       unzip $1       ;;
+            *.Z)         uncompress $1  ;;
+            *.7z)        7z x $1        ;;
+            *)     echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+duplicate_file() {
+    if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+        echo "Usage: duplicate_file <filename> [number_of_copies]"
+        return 1
+    fi
+
+    local filename="$1"
+    local num_copies="${2:-3}"
+    local basename="${filename%.*}"
+    local extension="${filename##*.}"
+
+    for i in $(seq 1 "$num_copies"); do
+        cp "$filename" "${basename}-duplicate${i}.${extension}"
+    done
+}
+
+fman() {
+    man -k . | fzf -q "$1" --prompt='man> ' --bind='ctrl-p:toggle-preview'  --preview $'echo {} | tr -d \'()\' | awk \'{printf "%s ", $2} {print $1}\' | xargs -r man | col -bx | bat -l man -p --color always' | tr -d '()' | awk '{printf "%s ", $2} {print $1}' | xargs -r man
+}
+
+ffzf() {
+    fzf --multi --info=inline --border=rounded \
+--preview "bat --color=always --style=numbers --line-range=:500 {}" \
+--prompt='Files > ' \
+--bind='enter:execute(nvim {+})' \
+--bind='del:execute(rm -ri {+})' \
+--bind='ctrl-p:toggle-preview' \
+--bind='ctrl-d:change-prompt(Dirs > )' \
+--bind='ctrl-d:+reload(fd --type d --follow --exclude '.git')' \
+--bind='ctrl-d:+change-preview(tree -C {})' \
+--bind='ctrl-f:change-prompt(Files > )' \
+--bind='ctrl-f:+reload(rg --files --hidden --no-ignore --iglob '!*/.git/*' --iglob '!.git')' \
+--bind='ctrl-f:+change-preview(bat --color=always --style=numbers --line-range=:500 {})' \
+--bind='ctrl-f:+refresh-preview' \
+--bind='ctrl-s:+change-preview(stat {})' \
+--bind='ctrl-a:select-all' \
+--bind='ctrl-x:deselect-all' \
+--header '
+CTRL-D to display directories CTRL-F to display files
+CTRL-A to select all | CTRL-x to deselect all
+ENTER to edit | DEL to delete
+CTRL-P to toggle preview
+' \
+--header-border=rounded \
+--header-lines-border=none
+}
+
+# Load additional aliases if they exist
+[ -f ~/.git_aliases ] && source ~/.git_aliases
+[ -f ~/.kubectl_aliases ] && source ~/.kubectl_aliases
+
+# User specific environment
+# Add local bin directories if they exist
+if [ -d "$HOME/.local/bin" ]; then
+    if ! [[ "$PATH" =~ "$HOME/.local/bin:" ]]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
 fi
 
-# Starship prompt
+if [ -d "$HOME/bin" ] && ! [[ "$PATH" =~ "$HOME/bin:" ]]; then
+    export PATH="$HOME/bin:$PATH"
+fi
+
+# Go configuration
+if [ -d "$HOME/.local/bin/go" ]; then
+    export PATH="$HOME/.local/bin/go/bin:$PATH"
+    export GOPATH="$HOME/go"
+    export PATH="$GOPATH/bin:$PATH"
+fi
+
+# Rust configuration
+if [ -f "$HOME/.cargo/env" ]; then
+    export PATH="$HOME/.cargo/bin:$PATH"
+    . "$HOME/.cargo/env"
+fi
+
+# Flutter configuration
+if [ -d "$HOME/flutter" ]; then
+    export PATH="$HOME/flutter/bin:$PATH"
+fi
+
+# Anaconda configuration
+if [ -d "$HOME/anaconda3" ]; then
+    export PATH="$HOME/anaconda3/bin:$PATH"
+fi
+
+# Initialize Starship prompt if installed
 if command -v starship &> /dev/null; then
     eval "$(starship init bash)"
 fi
 
-# FZF configuration
-export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
+# Initialize fzf if installed
+if command -v fzf &> /dev/null; then
+    # Setup fzf
+    if [ -f ~/.fzf.bash ]; then
+        source ~/.fzf.bash
+    fi
+    
+    # Only initialize key bindings if in an interactive shell
+    if [[ $- == *i* ]]; then
+        eval "$(fzf --bash)"
+    fi
+fi
 
-# Custom functions
-function mkcd() {
-    mkdir -p "$1" && cd "$1" || return
-}
-
-# Load local bashrc if it exists
-if [ -f ~/.bashrc.local ]; then
-    . ~/.bashrc.local
+# Initialize kubectl completion if installed
+if command -v kubectl &> /dev/null; then
+    source <(kubectl completion bash)
+    # Add kubectl autocomplete permanently to your bash shell
+    echo 'source <(kubectl completion bash)' >>~/.bashrc
 fi

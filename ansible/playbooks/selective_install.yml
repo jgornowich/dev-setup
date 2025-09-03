@@ -1,0 +1,51 @@
+---
+# playbooks/selective_install.yml
+- name: Selective Development Environment Setup
+  hosts: dev_machines
+  become: no
+  gather_facts: yes
+  
+  vars:
+    git_user_name: "{{ git_name | default('Your Name') }}"
+    git_user_email: "{{ git_email | default('your.email@example.com') }}"
+
+  tasks:
+    - name: Include common role
+      ansible.builtin.include_role:
+        name: common
+      when: install_common | default(true)
+      tags: ['common', 'base']
+
+    - name: Include development role
+      ansible.builtin.include_role:
+        name: development
+      when: install_development_tools | default(true)
+      tags: ['development', 'dev', 'programming']
+
+    - name: Include terminal role
+      ansible.builtin.include_role:
+        name: terminal
+      when: install_terminal_tools | default(true)
+      tags: ['terminal', 'cli', 'tools']
+
+    - name: Include containers role
+      ansible.builtin.include_role:
+        name: containers
+      when: install_docker | default(true) or install_kubernetes_tools | default(true)
+      tags: ['containers', 'docker', 'kubernetes', 'k8s']
+
+    - name: Include configs role
+      ansible.builtin.include_role:
+        name: configs
+      when: install_configs | default(true)
+      tags: ['configs', 'dotfiles', 'configuration']
+
+    - name: Backup dotfiles
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+        backup: yes  # Create .backup suffix
+      loop: "{{ dotfiles }}"
+      when: dotfiles is defined
+      tags: ['configs', 'dotfiles']
