@@ -1,0 +1,43 @@
+---
+# Terminal packages by distribution
+terminal_packages:
+  debian:
+    - bat
+    - btop
+    - cmatrix
+    - fd-find
+    - fzf
+    - gping
+    - htop
+    - jq
+    - neovim
+    - ripgrep
+    - tmux
+    - tree
+    - zsh
+
+  redhat:
+    - bat
+    - btop
+    - cmatrix
+    - fd-find
+    - fzf
+    - gping
+    - htop
+    - jq
+    - neovim
+    - ripgrep
+    - tmux
+    - tree
+    - zsh
+
+# Tool versions
+lazygit_version: "0.40.2"
+ripgrep_version: "13.0.0"
+
+# Paths
+starship_config: "{{ ansible_user_dir }}/.config/starship.toml"
+
+# Configuration templates
+starship_config_template: "starship.toml.j2"
+zshrc_template: "zshrc.j2"

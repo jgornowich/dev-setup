@@ -1,0 +1,48 @@
+---
+- name: Include distribution-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+    - "vars/{{ ansible_distribution }}.yml"
+    - "vars/{{ ansible_os_family }}.yml"
+  tags: [always]
+
+- name: Install common packages (Debian/Ubuntu)
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  loop: "{{ common_packages.debian }}"
+  when: ansible_os_family == 'Debian'
+  tags: [common, packages]
+
+- name: Install common packages (RHEL/Rocky)
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ common_packages.redhat }}"
+  when: ansible_os_family == 'RedHat'
+  tags: [common, packages]
+
+- name: Create user directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0755'
+  loop:
+    - "{{ ansible_user_dir }}/.local/bin"
+    - "{{ ansible_user_dir }}/.config"
+    - "{{ ansible_user_dir }}/.ssh"
+  tags: [common, directories]
+
+- name: Ensure authorized_keys exists
+  file:
+    path: "{{ ansible_user_dir }}/.ssh/authorized_keys"
+    state: touch
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0600'
+  tags: [common, ssh]

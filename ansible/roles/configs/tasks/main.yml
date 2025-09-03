@@ -1,0 +1,67 @@
+---
+- name: Ensure config directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0755'
+  loop:
+    - "{{ ansible_user_dir }}/.config"
+    - "{{ ansible_user_dir }}/.config/nvim"
+    - "{{ ansible_user_dir }}/.local/bin"
+  tags: [configs, directories]
+
+- name: Deploy .bashrc
+  template:
+    src: bashrc.j2
+    dest: "{{ ansible_user_dir }}/.bashrc"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, shell]
+
+- name: Deploy .gitconfig
+  template:
+    src: gitconfig.j2
+    dest: "{{ ansible_user_dir }}/.gitconfig"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, git]
+
+- name: Deploy .git_aliases
+  template:
+    src: git_aliases.j2
+    dest: "{{ ansible_user_dir }}/.git_aliases"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, git]
+
+- name: Deploy .kubectl_aliases
+  template:
+    src: kubectl_aliases.j2
+    dest: "{{ ansible_user_dir }}/.kubectl_aliases"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, kubernetes]
+
+- name: Deploy Starship config
+  template:
+    src: starship.toml.j2
+    dest: "{{ ansible_user_dir }}/.config/starship.toml"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, shell]
+
+- name: Deploy Neovim configuration
+  template:
+    src: init.vim.j2
+    dest: "{{ ansible_user_dir }}/.config/nvim/init.vim"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_gid }}"
+    mode: '0644'
+  tags: [configs, neovim]

@@ -1,0 +1,82 @@
+# Ansible
+*.retry
+*.pyc
+__pycache__/
+.ansible/
+collections/
+
+# Virtual Environment
+venv/
+.env
+.venv
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Local overrides
+host_vars/localhost.yml
+host_vars/localhost
+host_vars/localhost/*
+
+# Sensitive data
+*.pem
+*.key
+*.crt
+*.cert
+vault.yml
+vault.yaml
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp*
+
+# Go
+bin/
+.vendor/

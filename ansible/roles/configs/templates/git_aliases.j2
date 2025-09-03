@@ -1,0 +1,98 @@
+# Git Aliases
+# This file is sourced by .bashrc
+
+# Show the working tree status in a more compact format
+alias gs='git status -sb'
+
+# Add files to the staging area
+alias ga='git add'
+alias gaa='git add --all'
+alias gap='git add --patch'
+
+# Commit changes
+alias gc='git commit -v'
+alias gca='git commit -v --amend'
+alias gcan!='git commit -v --no-edit --amend'
+alias gcm='git commit -m'
+alias gcam='git commit -a -m'
+
+# Branch operations
+alias gb='git branch'
+alias gba='git branch -a'
+alias gbd='git branch -d'
+alias gbD='git branch -D'
+alias gco='git checkout'
+alias gcb='git checkout -b'
+
+# Remote operations
+alias grb='git rebase'
+alias grba='git rebase --abort'
+alias grbc='git rebase --continue'
+alias grbi='git rebase -i'
+alias grbm='git rebase origin/master'
+alias grbom='git rebase origin/master'
+
+# Fetch and pull
+alias gf='git fetch'
+alias gfa='git fetch --all --prune'
+alias gl='git pull'
+alias glum='git pull upstream master'
+
+# Push
+alias gp='git push'
+alias gpd='git push --dry-run'
+alias gpf!='git push --force'
+alias gpoat='git push origin --all && git push origin --tags'
+
+# Diff
+alias gd='git diff'
+alias gdca='git diff --cached'
+alias gdt='git diff-tree --no-commit-id --name-only -r'
+
+# Log
+alias glg='git log --stat'
+alias glgp='git log --stat -p'
+alias glgg='git log --graph'
+alias glgga='git log --graph --decorate --all'
+alias glgm='git log --graph --max-count=10'
+
+# Stash
+alias gst='git stash'
+alias gstaa='git stash apply'
+alias gstc='git stash clear'
+alias gstd='git stash drop'
+alias gstl='git stash list'
+alias gstp='git stash pop'
+alias gsts='git stash show --text'
+
+# Cleanup
+alias gclean='git clean -fd'
+alias gpristine='git reset --hard && git clean -dfx'
+
+# Submodules
+alias gsup='git submodule update --init --recursive'
+
+# Work in progress
+alias gwip='git add -A; git rm $(git ls-files --deleted) 2> /dev/null; git commit --no-verify -m "--wip-- [skip ci]"'
+alias gunwip='git log -n 1 | grep -q -c "--wip--" && git reset HEAD~1'
+
+# Helpers
+alias gcount='git shortlog -sn'
+alias gignore='git update-index --assume-unchanged'
+alias gunignore='git update-index --no-assume-unchanged'
+alias gstl='git stash list'
+
+# Git flow
+alias gffs='git flow feature start'
+alias gffp='git flow feature publish'
+alias gfff='git flow feature finish'
+
+# Custom functions
+git-undo() {
+    git reset --soft HEAD~1
+}
+
+git-cleanup() {
+    git fetch --prune
+    git branch -r | awk '{print $1}' | egrep -v -f /dev/fd/0 <(git branch -vv | grep origin) | awk '{print $1}' | xargs git branch -d
+}

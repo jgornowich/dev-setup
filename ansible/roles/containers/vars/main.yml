@@ -1,0 +1,42 @@
+---
+# Container packages by distribution
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+kubernetes_packages:
+  - kubelet
+  - kubeadm
+  - kubectl
+  - kubernetes-cni
+
+container_utilities:
+  debian:
+    - podman
+    - buildah
+    - skopeo
+    - slirp4netns
+    - fuse-overlayfs
+    - conmon
+    - containernetworking-plugins
+  redhat:
+    - podman
+    - buildah
+    - skopeo
+    - slirp4netns
+    - fuse-overlayfs
+    - conmon
+    - containernetworking-plugins
+
+# Tool versions
+docker_compose_version: "2.20.3"
+k9s_version: "0.27.4"
+dive_version: "0.10.0"
+lazydocker_version: "0.23.1"
+
+# Feature flags
+install_docker: true
+install_kubernetes: true

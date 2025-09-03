@@ -1,0 +1,116 @@
+# Don't print a new line at the start of the prompt
+add_newline = false
+
+# Replace the "❯" symbol in the prompt with "➜"
+[character]
+success_symbol = "[➜](bold green) "
+# The "use_symbol_for_status" will be formatted via `format`
+use_symbol_for_status = true
+# The "error_symbol" will be displayed when the previous command failed
+error_symbol = "[✗](bold red) "
+
+# Disable the package module, hiding it from the prompt completely
+[package]
+disabled = true
+
+# Customize the line break
+[line_break]
+disabled = false
+
+# Customize the directory prompt
+[directory]
+truncation_length = 3
+truncate_to_repo = true
+style = "blue"
+
+# Customize the git branch prompt
+[git_branch]
+format = 'on [\[$symbol$branch\]]($style) '
+style = "bold green"
+
+# Customize the git status prompt
+[git_status]
+format = '([\[$all_status$ahead_behind\]]($style) )'
+style = "bold green"
+stashed = ""
+
+# Customize the Rust version prompt
+[rust]
+format = 'via [${symbol}($version )]($style)'
+
+# Customize the Go version prompt
+[golang]
+format = 'via [${symbol}($version )]($style)'
+
+# Customize the Python version prompt
+[python]
+format = 'via [${symbol}($version )]($style)'
+
+# Customize the Node.js version prompt
+[nodejs]
+format = 'via [${symbol}($version )]($style)'
+
+# Customize the Docker context prompt
+[docker_context]
+format = 'via [${symbol}(${context} )]($style)'
+
+# Customize the Kubernetes context prompt
+[kubernetes]
+format = 'on [${symbol}(${context} )]($style)'
+
+# Customize the AWS region prompt
+[aws]
+format = 'on [${symbol}(${region} )]($style)'
+
+# Customize the time prompt
+[time]
+disabled = false
+format = '🕙 [\[$time\]]($style) '
+time_format = "%T"
+time_range = "10:00:00-16:00:00"
+
+# Customize the command execution time prompt
+[cmd_duration]
+min_time = 1000
+format = 'took [${duration}]($style) '
+
+# Customize the battery level prompt
+[battery]
+full_symbol = "🔋 "
+charging_symbol = "⚡️ "
+discharging_symbol = "💀 "
+
+# Customize the jobs prompt
+[hostname]
+ssh_only = false
+format = 'on [${hostname}]($style) '
+disabled = false
+
+# Customize the jobs prompt
+[jobs]
+symbol = "✦ "
+style = "bold blue"
+format = '[$symbol$number]($style) '
+
+# Customize the line break
+[line_break]
+disabled = false
+
+# Customize the prompt order
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$docker_context\
+$kubernetes\
+$python\
+$golang\
+$nodejs\
+$rust\
+$cmd_duration\
+$time\
+$line_break\
+$character\
+"""

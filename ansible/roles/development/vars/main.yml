@@ -1,0 +1,188 @@
+---
+# Development packages by distribution
+development_packages:
+  debian:
+    - autoconf
+    - automake
+    - autogen
+    - build-essential
+    - g++
+    - gcc
+    - git
+    - cmake
+    - gdb
+    - libboost-all-dev
+    - libffi-dev
+    - libssl-dev
+    - libtool
+    - m4
+    - make
+    - pkg-config
+    - python3-dev
+    - python3-venv
+    - openjdk-17-jdk
+    - maven
+    - gradle
+    - rustc
+    - cargo
+    - golang
+    - nodejs
+    - npm
+    - flutter
+    - terraform
+    - docker.io
+    - docker-compose
+    - kubectl
+    - k9s
+    - code
+    - hugo
+    - jekyll
+    - ruby
+    - ruby-dev
+    - vagrant
+    - terminator
+    - bat
+    - btop
+    - ctop
+    - cmatrix
+    - dive
+    - fastfetch
+    - fd-find
+    - fzf
+    - gping
+    - lazygit
+    - ripgrep
+    - neovim
+    - waveterm
+    - superfile
+    - starship
+
+  redhat:
+    - '@development'
+    - 'gcc'
+    - 'gcc-c++'
+    - 'git'
+    - 'make'
+    - 'cmake'
+    - 'python3-devel'
+    - 'python3-pip'
+    - 'python3-virtualenv'
+    - 'python3-wheel'
+    - 'python3-setuptools'
+    - 'openssl-devel'
+    - 'bzip2-devel'
+    - 'libffi-devel'
+    - 'xz-devel'
+    - 'wget'
+    - 'curl'
+    - 'vim'
+    - 'tmux'
+    - 'htop'
+    - 'net-tools'
+    - 'bind-utils'
+    - 'jq'
+    - 'java-17-openjdk-devel'
+    - 'maven'
+    - 'gradle'
+    - 'rust'
+    - 'cargo'
+    - 'golang'
+    - 'nodejs'
+    - 'npm'
+    - 'terraform'
+    - 'podman'
+    - 'podman-docker'
+    - 'kubectl'
+    - 'k9s'
+    - 'code'
+    - 'hugo'
+    - 'ruby'
+    - 'ruby-devel'
+    - 'rubygems'
+    - 'vagrant'
+    - 'terminator'
+    - 'bat'
+    - 'btop'
+    - 'ctop'
+    - 'cmatrix'
+    - 'dive'
+    - 'fastfetch'
+    - 'fd-find'
+    - 'fzf'
+    - 'gping'
+    - 'lazygit'
+    - 'ripgrep'
+    - 'neovim'
+    - 'waveterm'
+    - 'superfile'
+    - 'starship'
+
+# Python packages to install
+python_packages:
+  # Core
+  - pip
+  - setuptools
+  - wheel
+  - virtualenv
+  - pipx
+  
+  # Development tools
+  - ipython
+  - ptpython
+  - jupyter
+  - jupyterlab
+  - notebook
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - black
+  - isort
+  - flake8
+  - mypy
+  - pylint
+  - bandit
+  - safety
+  
+  # Data science
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - scipy
+  - jupyter
+  - jupyterlab
+  
+  # Web development
+  - fastapi
+  - uvicorn
+  - flask
+  - django
+  - requests
+  - httpx
+  - aiohttp
+  - sqlalchemy
+  - alembic
+  - pydantic
+  
+  # Utilities
+  - tqdm
+  - rich
+  - click
+  - typer
+  - python-dotenv
+  - python-jose
+  - passlib
+  - bcrypt
+  - python-multipart
+  - email-validator
+  - python-jose[cryptography]
+  - pylint
+  - jupyter
+  - ipdb
+
+# Go version to install
+go_version: 1.25.0
+
+# Node.js version to install
+node_version: 24

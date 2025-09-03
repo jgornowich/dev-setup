@@ -1,0 +1,73 @@
+---
+- name: Install terminal tools (Debian/Ubuntu)
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ terminal_packages.debian }}"
+  when: ansible_os_family == 'Debian'
+  tags: [terminal, packages]
+
+- name: Install terminal tools (RHEL/Rocky)
+  dnf:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ terminal_packages.redhat }}"
+  when: ansible_os_family == 'RedHat'
+  tags: [terminal, packages]
+
+- name: Install Starship
+  shell: |
+    sh -c "$(curl -fsSL https://starship.rs/install.sh)" -- -y
+  args:
+    creates: "/usr/local/bin/starship"
+  tags: [terminal, starship]
+
+- name: Install Lazygit
+  get_url:
+    url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ lazygit_version }}/lazygit_{{ lazygit_version }}_Linux_x86_64.tar.gz"
+    dest: "/tmp/lazygit.tar.gz"
+    mode: '0755'
+  register: lazygit_download
+  tags: [terminal, lazygit]
+
+- name: Extract and install Lazygit
+  unarchive:
+    src: "/tmp/lazygit.tar.gz"
+    dest: "/usr/local/bin"
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+  when: lazygit_download.changed
+  tags: [terminal, lazygit]
+
+- name: Install fzf
+  git:
+    repo: https://github.com/junegunn/fzf.git
+    dest: "{{ ansible_user_dir }}/.fzf"
+    update: yes
+  tags: [terminal, fzf]
+
+- name: Install fzf key bindings and completion
+  shell: "{{ ansible_user_dir }}/.fzf/install --key-bindings --completion --no-update-rc --no-bash --no-zsh"
+  args:
+    creates: "{{ ansible_user_dir }}/.fzf.bash"
+  tags: [terminal, fzf]
+
+- name: Install ripgrep (if not available from package manager)
+  block:
+    - name: Download ripgrep
+      get_url:
+        url: "https://github.com/BurntSushi/ripgrep/releases/download/{{ ripgrep_version }}/ripgrep-{{ ripgrep_version }}-x86_64-unknown-linux-musl.tar.gz"
+        dest: "/tmp/ripgrep.tar.gz"
+    - name: Extract ripgrep
+      unarchive:
+        src: "/tmp/ripgrep.tar.gz"
+        dest: "/tmp/ripgrep"
+        remote_src: yes
+    - name: Install ripgrep binary
+      copy:
+        src: "/tmp/ripgrep/ripgrep-{{ ripgrep_version }}-x86_64-unknown-linux-musl/rg"
+        dest: "/usr/local/bin/rg"
+        mode: '0755'
+        remote_src: yes
+  when: not ripgrep_installed.stat.exists
+  tags: [terminal, ripgrep]

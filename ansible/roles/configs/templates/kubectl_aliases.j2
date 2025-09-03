@@ -1,0 +1,141 @@
+# Kubernetes Aliases
+# This file is sourced by .bashrc
+
+# General aliases
+alias k='kubectl'
+alias kx='kubectx'
+alias kns='kubens'
+
+# Apply, create, delete
+alias kaf='kubectl apply -f'
+alias kcf='kubectl create -f'
+alias kdf='kubectl delete -f'
+alias krm='kubectl delete'
+alias krmf='kubectl delete --grace-period=0 --force'
+
+# Get resources
+alias kg='kubectl get'
+alias kga='kubectl get all --all-namespaces'
+alias kgp='kubectl get pods'
+alias kgd='kubectl get deploy'
+alias kgs='kubectl get svc'
+alias kgi='kubectl get ingress'
+alias kgn='kubectl get nodes'
+alias kgns='kubectl get namespaces'
+alias kgcm='kubectl get configmap'
+alias kgsec='kubectl get secret'
+alias kgpv='kubectl get pv'
+alias kgpvc='kubectl get pvc'
+
+# Describe resources
+alias kd='kubectl describe'
+alias kdp='kubectl describe pod'
+alias kdd='kubectl describe deploy'
+alias kds='kubectl describe svc'
+alias kdi='kubectl describe ingress'
+alias kdn='kubectl describe node'
+
+# Logs
+alias kl='kubectl logs'
+alias klf='kubectl logs -f'
+alias kl1h='kubectl logs --since 1h'
+alias kl1m='kubectl logs --since 1m'
+alia ktail='kubectl logs -f --tail=100'
+
+# Exec into pods
+alias ke='kubectl exec -it'
+
+# Port forwarding
+alias kpf='kubectl port-forward'
+
+# Context and namespace
+alias kc='kubectl config current-context'
+alias kcs='kubectl config use-context'
+
+# Edit resources
+alias ke='kubectl edit'
+alias kep='kubectl edit pod'
+alias ked='kubectl edit deploy'
+
+# Rollout
+alias krsd='kubectl rollout status deployment/'
+alias krrd='kubectl rollout restart deployment/'
+
+# Custom functions
+kns() {
+    if [ -z "$1" ]; then
+        kubectl get namespaces
+    else
+        kubectl config set-context --current --namespace="$1"
+    fi
+}
+
+kexec() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Usage: kexec <pod_name_pattern> <command>"
+        return 1
+    fi
+    
+    local pod=$(kubectl get pods | grep -m 1 "$1" | awk '{print $1}')
+    if [ -z "$pod" ]; then
+        echo "No pod found matching pattern: $1"
+        return 1
+    fi
+    
+    shift
+    kubectl exec -it "$pod" -- "$@"
+}
+
+klog() {
+    if [ -z "$1" ]; then
+        echo "Usage: klog <pod_name_pattern> [container_name]"
+        return 1
+    fi
+    
+    local pod=$(kubectl get pods | grep -m 1 "$1" | awk '{print $1}')
+    if [ -z "$pod" ]; then
+        echo "No pod found matching pattern: $1"
+        return 1
+    }
+    
+    shift
+    if [ -n "$1" ]; then
+        kubectl logs -f "$pod" -c "$1" --tail=100
+    else
+        kubectl logs -f "$pod" --tail=100
+    fi
+}
+
+kdebug() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Usage: kdebug <pod_name_pattern> <image> [command]"
+        return 1
+    fi
+    
+    local pod=$(kubectl get pods | grep -m 1 "$1" | awk '{print $1}')
+    if [ -z "$pod" ]; then
+        echo "No pod found matching pattern: $1"
+        return 1
+    }
+    
+    local image="$2"
+    shift 2
+    
+    local cmd="${1:-/bin/bash}"
+    
+    kubectl debug -it "$pod" --image="$image" -- "$cmd"
+}
+
+ksecret() {
+    if [ -z "$1" ]; then
+        echo "Usage: ksecret <secret_name> [namespace]"
+        return 1
+    fi
+    
+    local namespace=""
+    if [ -n "$2" ]; then
+        namespace="-n $2"
+    fi
+    
+    kubectl get secret "$1" $namespace -o json | jq '.data | map_values(@base64d)'
+}

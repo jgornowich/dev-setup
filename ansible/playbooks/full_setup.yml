@@ -1,0 +1,51 @@
+---
+- name: Development Environment Setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Update apt cache (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == 'Debian'
+      tags: [always]
+
+    - name: Update dnf cache (RHEL/Rocky)
+      dnf:
+        update_cache: yes
+      when: ansible_os_family == 'RedHat'
+      tags: [always]
+
+  roles:
+    - role: common
+      tags: [common, always]
+    - role: development
+      tags: [development]
+    - role: terminal
+      tags: [terminal]
+    - role: containers
+      tags: [containers]
+    - role: configs
+      tags: [configs]
+
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          Development environment setup complete!
+          
+          Next steps:
+          1. Log out and log back in for all changes to take effect
+          2. Run 'nvim +PlugInstall' to install Neovim plugins
+          
+          Your Git configuration has been set to:
+          - Name: {{ git_user_name | default('Your Name') }}
+          - Email: {{ git_user_email | default('your.email@example.com') }}
+          
+          To update these values, edit the file:
+          ansible/host_vars/localhost.yml
+          
+          Happy coding!
+      tags: [configs]
