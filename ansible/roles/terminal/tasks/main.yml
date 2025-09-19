@@ -13,14 +13,13 @@
   become: yes
   when: ansible_os_family == "Debian"
 
-
 - name: Install modern terminal tools from GitHub releases
   block:
     - name: Download and install btop
       block:
         - name: Download btop
           get_url:
-            url: "https://github.com/aristocratos/btop/releases/download/v1.2.13/btop-x86_64-linux-musl.tbz"
+            url: "https://github.com/aristocratos/btop/releases/download/v{{ version.btop }}/btop-x86_64-linux-musl.tbz"
             dest: "{{ ansible_env.HOME }}/Downloads/installers/btop.tbz"
             mode: '0644'
         
@@ -39,7 +38,7 @@
 
     - name: Download and install ctop
       get_url:
-        url: "https://github.com/bcicen/ctop/releases/download/v0.7.7/ctop-0.7.7-linux-amd64"
+        url: "https://github.com/bcicen/ctop/releases/download/v{{ version.ctop }}/ctop-{{ version.ctop }}-linux-amd64"
         dest: "{{ ansible_env.HOME }}/.local/bin/ctop"
         mode: '0755'
 
@@ -50,40 +49,64 @@
       become: yes
       when: os_family == "debian"
 
-    - name: Download dive (Debian/Ubuntu)
-      get_url:
-        url: "https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.deb"
-        dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
-        mode: '0644'
-      when: os_family == "debian"
+    - name: Install dive tool
+      block:
+        - name: Download dive (Debian/Ubuntu)
+          get_url:
+            url: "https://github.com/wagoodman/dive/releases/download/v{{ version.dive }}/dive_{{ version.dive }}_linux_amd64.deb"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
+            mode: '0644'
+          when: os_family == "debian"
 
-    - name: Install dive (Debian/Ubuntu)
-      apt:
-        deb: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
-        state: present
-      become: yes
-      when: os_family == "debian"
+        - name: Install dive (Debian/Ubuntu)
+          apt:
+            deb: "{{ ansible_env.HOME }}/Downloads/installers/dive.deb"
+            state: present
+          become: yes
+          when: os_family == "debian"
 
-    - name: Download dive (RHEL/Rocky/CentOS)
-      get_url:
-        url: "https://github.com/wagoodman/dive/releases/download/v0.11.0/dive_0.11.0_linux_amd64.rpm"
-        dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
-        mode: '0644'
-      when: os_family == "redhat"
+        - name: Download dive (RHEL/Rocky/CentOS)
+          get_url:
+            url: "https://github.com/wagoodman/dive/releases/download/v{{ version.dive }}/dive_{{ version.dive }}_linux_amd64.rpm"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
+            mode: '0644'
+          when: os_family == "redhat"
 
-    - name: Install dive (RHEL/Rocky/CentOS)
-      dnf:
-        name: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
-        state: present
-        disable_gpg_check: yes
-      become: yes
-      when: os_family == "redhat"
+        - name: Install dive (RHEL/Rocky/CentOS)
+          dnf:
+            name: "{{ ansible_env.HOME }}/Downloads/installers/dive.rpm"
+            state: present
+            disable_gpg_check: yes
+          become: yes
+          when: os_family == "redhat"
+      when: install_dive
+
+    - name: Download and install fd-find
+      block:
+        - name: Download fd-find
+          get_url:
+            url: "https://github.com/sharkdp/fd/releases/download/v{{ version.fd }}/fd-v{{ version.fd }}-x86_64-unknown-linux-gnu.tar.gz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/fd.tar.gz"
+            mode: '0644'
+        
+        - name: Extract fd-find
+          unarchive:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/fd.tar.gz"
+            dest: "{{ ansible_env.HOME }}/Downloads/installers/"
+            remote_src: yes
+        
+        - name: Install fd-find
+          copy:
+            src: "{{ ansible_env.HOME }}/Downloads/installers/fd-v{{ version.fd }}-x86_64-unknown-linux-gnu/fd"
+            dest: "{{ ansible_env.HOME }}/.local/bin/fd"
+            mode: '0755'
+            remote_src: yes
 
     - name: Download and install fastfetch
       block:
         - name: Download fastfetch
           get_url:
-            url: "https://github.com/fastfetch-cli/fastfetch/releases/download/2.8.10/fastfetch-linux-amd64.tar.gz"
+            url: "https://github.com/fastfetch-cli/fastfetch/releases/download/{{ version.fastfetch }}/fastfetch-linux-amd64.tar.gz"
             dest: "{{ ansible_env.HOME }}/Downloads/installers/fastfetch.tar.gz"
             mode: '0644'
         
@@ -104,7 +127,7 @@
       block:
         - name: Download fzf
           get_url:
-            url: "https://github.com/junegunn/fzf/releases/download/v0.65.2/fzf-0.65.2-linux_amd64.tar.gz"
+            url: "https://github.com/junegunn/fzf/releases/download/v{{ version.fzf }}/fzf-{{ version.fzf }}-linux_amd64.tar.gz"
             dest: "{{ ansible_env.HOME }}/Downloads/installers/fzf.tar.gz"
             mode: '0644'
         
@@ -116,7 +139,7 @@
 
     - name: Download and install lazydocker
       get_url:
-        url: "https://github.com/jesseduffield/lazydocker/releases/download/v0.24.1/lazydocker_0.24.1_Linux_x86_64.tar.gz"
+        url: "https://github.com/jesseduffield/lazydocker/releases/download/v{{ version.lazydocker }}/lazydocker_{{ version.lazydocker }}_Linux_x86_64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/lazydocker.tar.gz"
         mode: '0644'
 
@@ -128,7 +151,7 @@
 
     - name: Download and install lazygit
       get_url:
-        url: "https://github.com/jesseduffield/lazygit/releases/download/v0.54.2/lazygit_0.54.2_linux_x86_64.tar.gz"
+        url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ version.lazygit }}/lazygit_{{ version.lazygit }}_linux_x86_64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/lazygit.tar.gz"
         mode: '0644'
 
@@ -142,7 +165,7 @@
       block:
         - name: Download Waveterm (Debian/Ubuntu)
           get_url:
-            url: "https://github.com/wavetermdev/waveterm/releases/download/v0.11.5/waveterm-linux-x86_64-0.11.5.rpm"
+            url: "https://github.com/wavetermdev/waveterm/releases/download/v{{ version.waveterm }}/waveterm-linux-x86_64-{{ version.waveterm }}.rpm"
             dest: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.deb"
             mode: '0644'
           when: os_family == "debian"
@@ -156,7 +179,7 @@
         
         - name: Download Waveterm (RHEL/Rocky/CentOS)
           get_url:
-            url: "https://github.com/wavetermdev/waveterm/releases/download/v0.11.5/waveterm-linux-x86_64-0.11.5.rpm"
+            url: "https://github.com/wavetermdev/waveterm/releases/download/v{{ version.waveterm }}/waveterm-linux-x86_64-{{ version.waveterm }}.rpm"
             dest: "{{ ansible_env.HOME }}/Downloads/installers/waveterm.rpm"
             mode: '0644'
           when: os_family == "redhat"
@@ -171,7 +194,7 @@
 
     - name: Download and install superfile (spf)
       get_url:
-        url: "https://github.com/yorukot/superfile/releases/download/v1.3.3/superfile-linux-v1.3.3-amd64.tar.gz"
+        url: "https://github.com/yorukot/superfile/releases/download/v{{ version.superfile }}/superfile-linux-v{{ version.superfile }}-amd64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/superfile.tar.gz"
         mode: '0644'
 
@@ -183,7 +206,7 @@
 
     - name: Install superfile
       copy:
-        src: "{{ ansible_env.HOME }}/Downloads/installers/dist/superfile-linux-v1.3.3-amd64/spf"
+        src: "{{ ansible_env.HOME }}/Downloads/installers/dist/superfile-linux-v{{ version.superfile }}-amd64/spf"
         dest: "{{ ansible_env.HOME }}/.local/bin/spf"
         mode: '0755'
         remote_src: yes
@@ -205,7 +228,7 @@
 
         - name: Download Cascadia Code Nerd Font
           get_url:
-            url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/CascadiaCode.zip
+            url: https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ version.cascadia_code }}/CascadiaCode.zip
             dest: "{{ ansible_env.HOME }}/Downloads/installers/CascadiaCode.zip"
             mode: '0644'
 

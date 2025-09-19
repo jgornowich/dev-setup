@@ -1,19 +1,8 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
-# If not running interactively, don't do anything
-case $- in
-    *i*) ;;
-      *) return;;
-esac
-
-# History settings
-HISTCONTROL=ignoreboth
-HISTSIZE=1000
-HISTFILESIZE=2000
-shopt -s histappend
-
-# Check window size after each command
-shopt -s checkwinsize
+if [[ -f /etc/bashrc ]]; then
+  . /etc/bashrc
+fi
 
 # Enable color support
 if [ -x /usr/bin/dircolors ]; then
@@ -201,7 +190,7 @@ fi
 
 # Flutter configuration
 if [ -d "$HOME/flutter" ]; then
-    export PATH="$HOME/flutter/bin:$PATH"
+    export PATH="$HOME/.local/bin/flutter/bin:$PATH"
 fi
 
 # Anaconda configuration
@@ -210,9 +199,9 @@ if [ -d "$HOME/anaconda3" ]; then
 fi
 
 # Initialize Starship prompt if installed
-if command -v starship &> /dev/null; then
-    eval "$(starship init bash)"
-fi
+#if command -v starship &> /dev/null; then
+#    eval "$(starship init bash)"
+#fi
 
 # Initialize fzf if installed
 if command -v fzf &> /dev/null; then

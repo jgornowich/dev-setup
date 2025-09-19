@@ -31,7 +31,7 @@
         groups: docker
         append: yes
       become: yes
-  when: os_family == "debian"
+  when: os_family == "debian" and install_docker
 
 - name: Install Docker (RHEL/Rocky/CentOS)
   block:
@@ -69,8 +69,16 @@
         groups: docker
         append: yes
       become: yes
-  when: os_family == "redhat"
+  when: os_family == "redhat" and install_docker
 
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+  when: install_docker
+  
 - name: Install Podman (alternative to Docker)
   block:
     - name: Install Podman (Debian/Ubuntu)
@@ -80,7 +88,7 @@
           - podman-compose
         state: present
       become: yes
-      when: os_family == "debian"
+      when: os_family == "debian" 
     
     - name: Install Podman (RHEL/Rocky/CentOS)
       dnf:
@@ -90,19 +98,20 @@
         state: present
       become: yes
       when: os_family == "redhat"
+  when: install_podman
 
 - name: Install Kubernetes tools
   block:
     - name: Add Kubernetes GPG key (Debian/Ubuntu)
       apt_key:
-        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        url: https://pkgs.k8s.io/core:/stable:/v{{ version.k8s }}/deb/Release.key
         state: present
       become: yes
       when: os_family == "debian"
     
     - name: Add Kubernetes repository (Debian/Ubuntu)
       apt_repository:
-        repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+        repo: "deb https://pkgs.k8s.io/core:/stable:/v{{ version.k8s }}/deb/ /"
         state: present
       become: yes
       when: os_family == "debian"
@@ -122,9 +131,9 @@
       yum_repository:
         name: kubernetes
         description: Kubernetes
-        baseurl: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
+        baseurl: https://pkgs.k8s.io/core:/stable:/v{{ version.k8s }}/rpm/
         gpgcheck: yes
-        gpgkey: https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+        gpgkey: https://pkgs.k8s.io/core:/stable:/v{{ version.k8s }}/rpm/repodata/repomd.xml.key
         enabled: yes
       become: yes
       when: os_family == "redhat"
@@ -138,12 +147,13 @@
         state: present
       become: yes
       when: os_family == "redhat"
+  when: install_kubernetes_tools
 
 - name: Install k9s
   block:
     - name: Download k9s
       get_url:
-        url: "https://github.com/derailed/k9s/releases/download/v0.31.7/k9s_Linux_amd64.tar.gz"
+        url: "https://github.com/derailed/k9s/releases/download/v{{ version.k9s }}/k9s_Linux_amd64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/k9s.tar.gz"
         mode: '0644'
     
@@ -152,12 +162,13 @@
         src: "{{ ansible_env.HOME }}/Downloads/installers/k9s.tar.gz"
         dest: "{{ ansible_env.HOME }}/.local/bin/"
         remote_src: yes
+  when: install_kubernetes_tools
 
 - name: Install Helm
   block:
     - name: Download Helm installer
       get_url:
-        url: "https://get.helm.sh/helm-v3.13.3-linux-amd64.tar.gz"
+        url: "https://get.helm.sh/helm-v{{ version.helm }}-linux-amd64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/helm.tar.gz"
         mode: '0644'
     
@@ -173,10 +184,4 @@
         dest: "{{ ansible_env.HOME }}/.local/bin/helm"
         mode: '0755'
         remote_src: yes
-
-- name: Start and enable Docker service
-  systemd:
-    name: docker
-    state: started
-    enabled: yes
-  become: yes
+  when: install_kubernetes_tools

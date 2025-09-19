@@ -1,4 +1,4 @@
 ansible>=6.0.0
 ansible-core>=2.15.0
 jmespath>=0.9.5
-ansible-lint>=24.0.0
+ansible-lint

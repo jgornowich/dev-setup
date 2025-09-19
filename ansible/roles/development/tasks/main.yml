@@ -36,36 +36,6 @@
         state: link
   when: os_family == "redhat"
 
-- name: Check Vagrant installation
-  block:
-    - name: Check if Vagrant binary exists
-      stat:
-        path: "{{ ansible_env.HOME }}/.local/bin/vagrant"
-      register: vagrant_binary
-      changed_when: false
-      
-    - name: Get installed Vagrant version
-      command: "{{ ansible_env.HOME }}/.local/bin/vagrant --version"
-      register: vagrant_version
-      changed_when: false
-      ignore_errors: true
-      
-    - name: Set Vagrant installation facts
-      set_fact:
-        vagrant_needs_install: >-
-          {{ not vagrant_binary.stat.exists or 
-             version.vagrant not in (vagrant_version.stdout | default('')) }}
-      
-    - name: Debug Vagrant version check
-      debug:
-        msg: >-
-          Vagrant needs install: {{ vagrant_needs_install }}
-          Installed version: {{ vagrant_version.stdout | default('Not installed') }}
-          Desired version: {{ version.vagrant }}
-      when: install_vagrant 
-      register: vagrant_check
-      changed_when: false
-
 - name: Install Vagrant
   block:
     - name: Download Vagrant
@@ -87,11 +57,7 @@
       register: vagrant_version
       changed_when: false
       ignore_errors: yes
-
-    - name: Display Vagrant version
-      debug:
-        msg: "Vagrant version: {{ vagrant_version.stdout | default('Vagrant installation may have failed') }}"
-      when: install_vagrant
+  when: install_vagrant
 
 - name: Install Rust via rustup
   block:
@@ -106,6 +72,7 @@
       command: rustup update {{ version.rust_channel }}
       environment:
         PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+  when: install_rust
 
 - name: Install Go
   block:
@@ -127,14 +94,7 @@
         dest: "{{ ansible_env.HOME }}/.local/bin/go"
         remote_src: yes
         extra_opts: [--strip-components=1]
-       
-    - name: Add Go to PATH in .bashrc if not present
-      lineinfile:
-        path: "{{ ansible_env.HOME }}/.bashrc"
-        line: 'export PATH="{{ ansible_env.HOME }}/.local/bin/go/bin:$PATH"'
-        insertafter: '^# User specific environment'
-        create: yes
-      when: install_go
+  when: install_go
 
 - name: Install Anaconda
   block:
@@ -147,8 +107,8 @@
     - name: Install Anaconda
       shell: "{{ ansible_env.HOME }}/Downloads/installers/anaconda-{{ version.anaconda }}.sh -b -p {{ ansible_env.HOME }}/anaconda3"
       args:
-        creates: "{{ ansible_env.HOME }}/.local/bin/anaconda3/bin/conda"
-      when: install_anaconda
+        creates: "{{ ansible_env.HOME }}/anaconda3/bin/conda"
+  when: install_anaconda
 
 - name: Install Flutter
   block:
@@ -163,7 +123,6 @@
         url: "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{ version.flutter }}-stable.tar.xz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/flutter-{{ version.flutter }}.tar.xz"
         mode: '0644'
-      when: not flutter_installed.stat.exists
     
     - name: Extract Flutter
       unarchive:
@@ -171,14 +130,7 @@
         dest: "{{ ansible_env.HOME }}/.local/bin"
         remote_src: yes
         creates: "{{ ansible_env.HOME }}/.local/bin/flutter/bin/flutter"
-    
-    - name: Add Flutter to PATH
-      lineinfile:
-        path: "{{ ansible_env.HOME }}/.bashrc"
-        line: 'export PATH="{{ ansible_env.HOME }}/.local/bin/flutter/bin:$PATH"'
-        insertafter: '^# User specific environment'
-        create: yes
-  when: install_flutter and (flutter_check is not defined or flutter_check.flutter_needs_install)
+  when: install_flutter
 
 - name: Install Terraform
   block:
@@ -214,6 +166,7 @@
         name: jekyll
         state: present
         user_install: yes
+      when: install_jekyll
     
     - name: Create .local/bin directory if it doesn't exist
       file:
@@ -226,6 +179,7 @@
         url: "https://github.com/gohugoio/hugo/releases/download/v{{ version.hugo }}/hugo_extended_{{ version.hugo }}_linux-amd64.tar.gz"
         dest: "{{ ansible_env.HOME }}/Downloads/installers/hugo-{{ version.hugo }}.tar.gz"
         mode: '0644'
+      when: install_hugo
     
     - name: Extract Hugo
       unarchive:
@@ -233,3 +187,64 @@
         dest: "{{ ansible_env.HOME }}/.local/bin"
         remote_src: yes
         creates: "{{ ansible_env.HOME }}/.local/bin/hugo"
+      when: install_hugo
+
+- name: Install VS Code (Debian/Ubuntu)
+  block:
+    - name: Add Microsoft GPG key
+      apt_key:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+      become: yes
+    
+    - name: Add VS Code repository
+      apt_repository:
+        repo: "deb [arch=amd64,arm64,armhf] https://packages.microsoft.com/repos/code stable main"
+        state: present
+      become: yes
+    
+    - name: Install VS Code
+      apt:
+        name: code
+        state: present
+        update_cache: yes
+      become: yes
+  when: os_family == "debian" and install_vscode
+
+- name: Install VS Code (RHEL/Rocky/CentOS)
+  block:
+    - name: Add Microsoft repository
+      yum_repository:
+        name: vscode
+        description: Visual Studio Code
+        baseurl: https://packages.microsoft.com/yumrepos/vscode
+        gpgcheck: yes
+        gpgkey: https://packages.microsoft.com/keys/microsoft.asc
+        enabled: yes
+      become: yes
+    
+    - name: Install VS Code
+      dnf:
+        name: code
+        state: present
+      become: yes
+  when: os_family == "redhat" and install_vscode
+
+- name: Install Windsurf (if available)
+  block:
+    - name: Download Windsurf (Debian/Ubuntu)
+      get_url:
+        url: "https://windsurf-stable.codeiumdata.com/linux-x64/stable/windsurf-linux-x64-1.0.5.deb"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/windsurf.deb"
+        mode: '0644'
+      when: os_family == "debian"
+      ignore_errors: yes
+    
+    - name: Install Windsurf (Debian/Ubuntu)
+      apt:
+        deb: "{{ ansible_env.HOME }}/Downloads/installers/windsurf.deb"
+        state: present
+      become: yes
+      when: os_family == "debian"
+      ignore_errors: yes
+  when: install_windsurf
