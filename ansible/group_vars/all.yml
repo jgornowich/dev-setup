@@ -21,6 +21,7 @@ version:
   python: "3.10"  # Explicit for Rocky/Ubuntu
   node: "lts"
   rust_channel: "stable"
+  dbeaver: "25.2.1"  # DBeaver Community Edition
   postman: "11.63.6"  # Postman version
   
   # Build tools
@@ -80,6 +81,7 @@ install_go: true
 install_dive: true
 install_rust: true
 install_postman: true
+install_dbeaver: true
 
 # Shared packages (cross-OS)
 common_packages:

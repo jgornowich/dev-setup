@@ -258,6 +258,38 @@
       become: yes
   when: os_family == "redhat" and install_vscode
 
+- name: Install DBeaver
+  block:
+    - name: Download DBeaver (Debian/Ubuntu)
+      get_url:
+        url: "https://github.com/dbeaver/dbeaver/releases/download/{{ version.dbeaver }}/dbeaver-ce_{{ version.dbeaver }}_amd64.deb"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/dbeaver-{{ version.dbeaver }}.deb"
+        mode: '0644'
+      when: ansible_os_family == "Debian"
+
+    - name: Install DBeaver (Debian/Ubuntu)
+      apt:
+        deb: "{{ ansible_env.HOME }}/Downloads/installers/dbeaver-{{ version.dbeaver }}.deb"
+        state: present
+      become: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Download DBeaver (RHEL/Rocky/CentOS)
+      get_url:
+        url: "https://github.com/dbeaver/dbeaver/releases/download/{{ version.dbeaver }}/dbeaver-ce-{{ version.dbeaver }}-stable.x86_64.rpm"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/dbeaver-{{ version.dbeaver }}.rpm"
+        mode: '0644'
+      when: ansible_os_family == "RedHat"
+
+    - name: Install DBeaver (RHEL/Rocky/CentOS)
+      dnf:
+        name: "{{ ansible_env.HOME }}/Downloads/installers/dbeaver-{{ version.dbeaver }}.rpm"
+        state: present
+        disable_gpg_check: yes
+      become: yes
+      when: ansible_os_family == "RedHat"
+  when: install_dbeaver
+
 - name: Install Windsurf (if available)
   block:
     - name: Download Windsurf (Debian/Ubuntu)
