@@ -21,6 +21,7 @@ version:
   python: "3.10"  # Explicit for Rocky/Ubuntu
   node: "lts"
   rust_channel: "stable"
+  postman: "11.63.6"  # Postman version
   
   # Build tools
   gradle: "8.14.3"
@@ -78,6 +79,7 @@ install_vagrant: true
 install_go: true
 install_dive: true
 install_rust: true
+install_postman: true
 
 # Shared packages (cross-OS)
 common_packages:

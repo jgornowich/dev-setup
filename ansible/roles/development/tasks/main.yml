@@ -189,6 +189,34 @@
         creates: "{{ ansible_env.HOME }}/.local/bin/hugo"
       when: install_hugo
 
+- name: Install Postman
+  block:
+    - name: Create Postman directory
+      file:
+        path: "{{ ansible_env.HOME }}/.local/bin/Postman"
+        state: directory
+        mode: '0755'
+    
+    - name: Download Postman
+      get_url:
+        url: "https://dl.pstmn.io/download/version/{{ version.postman }}/linux64"
+        dest: "{{ ansible_env.HOME }}/Downloads/installers/postman-{{ version.postman }}.tar.gz"
+        mode: '0644'
+    
+    - name: Extract Postman
+      unarchive:
+        src: "{{ ansible_env.HOME }}/Downloads/installers/postman-{{ version.postman }}.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin/"
+        remote_src: yes
+        creates: "{{ ansible_env.HOME }}/.local/bin/Postman/Postman"
+    
+    - name: Create Postman symlink
+      file:
+        src: "{{ ansible_env.HOME }}/.local/bin/Postman/Postman"
+        dest: "{{ ansible_env.HOME }}/.local/bin/postman"
+        state: link
+  when: install_postman
+
 - name: Install VS Code (Debian/Ubuntu)
   block:
     - name: Add Microsoft GPG key
